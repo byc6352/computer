@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <BorlandProject>
-  <Transactions>
-    <Transaction>2019/11/14 12:43:34.534,D:\works\delphi\computer\cclient\cclient.dproj=D:\works\delphi\computer\cclient\MyServer.dproj</Transaction>
+	<Transactions>
+    <Transaction>2019/11/14 12:43:34.000.534,D:\works\delphi\computer\cclient\MyServer.dproj=D:\works\delphi\computer\cclient\cclient.dproj</Transaction>
   </Transactions>
 </BorlandProject>

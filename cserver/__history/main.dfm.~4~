@@ -3355,7 +3355,7 @@ object FMain: TFMain
     Top = 27
     Width = 622
     Height = 468
-    ActivePage = TabSheet6
+    ActivePage = TabSheet1
     Align = alClient
     TabOrder = 3
     object TabSheet6: TTabSheet
@@ -3994,8 +3994,8 @@ object FMain: TFMain
     end
   end
   object MainMenu1: TMainMenu
-    Left = 16
-    Top = 232
+    Left = 96
+    Top = 208
     object N1: TMenuItem
       Caption = #25991#20214#25805#20316
       object N7: TMenuItem
@@ -4216,8 +4216,8 @@ object FMain: TFMain
     end
   end
   object IMLFolders: TImageList
-    Left = 80
-    Top = 368
+    Left = 56
+    Top = 208
     Bitmap = {
       494C01010A000E00040010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000003000000001002000000000000030
@@ -4623,8 +4623,8 @@ object FMain: TFMain
       000000000000}
   end
   object PopRegTree: TPopupMenu
-    Left = 336
-    Top = 368
+    Left = 40
+    Top = 56
     object N27: TMenuItem
       Caption = #26032#24314'(N)'
       object PopCrtKey: TMenuItem
@@ -4666,15 +4666,15 @@ object FMain: TFMain
     end
   end
   object popComInfo: TPopupMenu
-    Left = 296
-    Top = 432
+    Left = 16
+    Top = 352
     object popMemoComInfo: TMenuItem
       Caption = #26597#25214'..'
     end
   end
   object PopRegList: TPopupMenu
-    Left = 168
-    Top = 296
+    Left = 96
+    Top = 56
     object PopEdtValue: TMenuItem
       Tag = 8
       Caption = #20462#25913'(M)'
@@ -4695,8 +4695,8 @@ object FMain: TFMain
     end
   end
   object PopFile: TPopupMenu
-    Left = 16
-    Top = 432
+    Left = 8
+    Top = 256
     object popUpFile: TMenuItem
       Caption = #19978#20256#25991#20214
       OnClick = popUpFileClick
@@ -4721,12 +4721,12 @@ object FMain: TFMain
     Filter = #25152#26377#25991#20214'(*.*)|*.*'
     InitialDir = 'c:\'
     Title = #35831#36755#20837#35201#20445#23384#30340#25991#20214#21517
-    Left = 176
-    Top = 432
+    Left = 48
+    Top = 256
   end
   object PopDir: TPopupMenu
-    Left = 64
-    Top = 432
+    Left = 88
+    Top = 256
     object PopCrtDir: TMenuItem
       Caption = #21019#24314#30446#24405
       OnClick = PopCrtDirClick
@@ -4750,16 +4750,16 @@ object FMain: TFMain
   object Open1: TOpenDialog
     Filter = #25152#26377#25991#20214'(*.*)|*.*'
     Title = #35831#36873#25321#25991#20214
-    Left = 104
-    Top = 432
+    Left = 88
+    Top = 312
   end
   object Find1: TFindDialog
-    Left = 144
-    Top = 432
+    Left = 128
+    Top = 312
   end
   object popCom: TPopupMenu
-    Left = 224
-    Top = 432
+    Left = 136
+    Top = 256
     object popDisCon: TMenuItem
       Caption = #26029#24320#36830#25509
       OnClick = popDisConClick
@@ -4770,8 +4770,8 @@ object FMain: TFMain
     end
   end
   object popProc: TPopupMenu
-    Left = 24
-    Top = 376
+    Left = 16
+    Top = 208
     object popKillProc: TMenuItem
       Caption = #32456#27490
       OnClick = popKillProcClick
@@ -4796,8 +4796,8 @@ object FMain: TFMain
     end
   end
   object popSvcCtrl: TPopupMenu
-    Left = 232
-    Top = 376
+    Left = 160
+    Top = 160
     object popSvcStatus: TMenuItem
       Caption = #29366#24577
       object popSvcStart: TMenuItem
@@ -4833,8 +4833,8 @@ object FMain: TFMain
     end
   end
   object popEnumSvc: TPopupMenu
-    Left = 152
-    Top = 368
+    Left = 112
+    Top = 176
     object popSvc: TMenuItem
       Caption = #26631#20934#26381#21153
       object N16: TMenuItem

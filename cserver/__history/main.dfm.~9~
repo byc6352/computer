@@ -4623,8 +4623,8 @@ object FMain: TFMain
       000000000000}
   end
   object PopRegTree: TPopupMenu
-    Left = 336
-    Top = 368
+    Left = 288
+    Top = 352
     object N27: TMenuItem
       Caption = #26032#24314'(N)'
       object PopCrtKey: TMenuItem

@@ -1931,8 +1931,7 @@ end;
 
 procedure TFMain.PopUpLoadDirClick(Sender: TObject);
 var
-  remoteDir,LocalFile:ansistring;
-  LocalDir:string;
+  remoteDir,LocalDir,LocalFile:ansistring;
   TransDirInfo:stTransFilesInfo;
 begin
   if not CurConActive then exit;
@@ -1944,7 +1943,7 @@ begin
   remoteDir:=getTreeDir(treeDir.Selected);
   initPath:='C:';
   //if SelDir('请选择安装目录：','',initPath) then LocalDir:=initPath else exit;
-  if(initPath='')then initPath:='c:\';
+  if(initPath='')then initPath='c:\';
   if not  SelectDirectory( '请选择目录',initPath,LocalDir) then  exit;
   initPath:=LocalDir;
   zeromemory(@TransDirInfo,sizeof(TransDirInfo));
@@ -1952,7 +1951,7 @@ begin
   TransDirInfo.server.port:=PORT;
   TransDirInfo.server.flg:=0;
   strcopy(TransDirInfo.clientFile,pansiChar(remoteDir));
-  strcopy(TransDirInfo.serverFile,pansiChar(ansiString(LocalDir)));
+  strcopy(TransDirInfo.serverFile,pansiChar(LocalDir));
   TransDirInfo.bUpLoad:=false;
   TransDirInfo.bFolder:=true;
   TransDirInfo.bCompleteDel:=false;

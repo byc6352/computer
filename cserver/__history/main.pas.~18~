@@ -7,7 +7,7 @@ uses
   Dialogs, ComCtrls, StdCtrls, ExtCtrls, Buttons, Menus,uTransDataSrv,data,
   ImgList, ScktComp,func,shellapi,shlobj,ActiveX,registry,uConfigSvrGuid,uRegEdit, //, WinSkinData
   winSvc,uHelper,untQQWry, DateUtils,funcs,ufVideo,udlgCMD,ufScr,uDebug,
-  System.ImageList;
+  System.ImageList,FileCtrl;
 
 type
   pDriveInfo=^stDriveInfo;
@@ -364,7 +364,7 @@ type
     function getListFile(node:ttreenode;item:tlistItem):string;
     procedure ProcessGetFileInfos(FileInfos:pointer;size:integer);
     function GetFileIconIndex(FileName: string; Large: Boolean): Integer;
-    function SelDir(const Caption: string; const Root: WideString; out Directory: string): Boolean;
+    function SelDir(const Caption: String; const Root: WideString; out Directory: String): Boolean;
     procedure ProcessGetProcs(procs:pointer;size:integer);
     procedure ProcessGetRegInfo(RegInfo:pointer;size:integer);
     procedure UpdateTreeProcess(Tree: TTreeView;FullFileNameList:tstrings);
@@ -383,7 +383,7 @@ const
 var
   FMain: TFMain;
   bTree1Change:boolean;
-  InitPath:string;
+  InitPath:ansistring;
 function BrowseCallbackProc(hwnd: HWND;uMsg: UINT;lParam: Cardinal;lpData: Cardinal): integer; stdcall;
 implementation
 
@@ -436,10 +436,11 @@ begin
     QQWryFile:=ExtractFilePath(QQWryFile)+'QQWry.dat';
     if FileExists(QQWryFile) then begin
       QQWry:=TQQWry.Create(QQWryFile);
-      MemoPCInfo.Lines.Add('-----QQWry.dat数据库-------');
+      MemoPCInfo.Lines.Add('-----数据库-------');
       MemoPCInfo.Lines.Add('文件大小: ' + sysutils.IntToStr(QQWry.GetQQWryFileSize));
       MemoPCInfo.Lines.Add('记录总数: ' + sysutils.IntToStr(QQWry.GetIPRecordNum));
-      MemoPCInfo.Lines.Add('更新日期: ' + format('%d年%d月%d日', [yearof(QQWry.GetQQWryDate), monthof(QQWry.GetQQWryDate), dayof(QQWry.GetQQWryDate)]));
+      MemoPCInfo.Lines.Add('更新日期: ' + QQWry.GetQQWryDate);
+      //MemoPCInfo.Lines.Add('更新日期: ' + format('%d年%d月%d日', [yearof(QQWry.GetQQWryDate), monthof(QQWry.GetQQWryDate), dayof(QQWry.GetQQWryDate)]));
       MemoPCInfo.Lines.Add('数据库来源: ' + QQWry.GetQQWryDataFrom);
       QQWry.Free;
     end
@@ -627,7 +628,7 @@ begin
     strcopy(buf,ip);strcat(buf,p);
     memoPCInfo.Lines.Add(buf);
     ip:='';pc:='';
-    GetModuleFileName(0,ip,sizeof(ip));
+    GetModuleFileNameA(0,ip,sizeof(ip));
     ExtractFileDir(ip,pc);strcat(pc,'\server.txt');
     func.Log(buf,pc);
   end;
@@ -814,7 +815,7 @@ function tfmain.SelDir(const Caption: string; const Root: WideString; out Direct
 var
   WindowList: Pointer;
   BrowseInfo: TBrowseInfo;
-  Buffer: PansiChar;
+  Buffer: PChar;
   RootItemIDList, ItemIDList: PItemIDList;
   ShellMalloc: IMalloc;
   IDesktopFolder: IShellFolder;
@@ -822,10 +823,10 @@ var
 begin
   Result := False;
   Directory := '';
-  FillansiChar(BrowseInfo, SizeOf(BrowseInfo), 0);
+  FillChar(BrowseInfo, SizeOf(BrowseInfo), 0);
   if (ShGetMalloc(ShellMalloc) = S_OK) and (ShellMalloc <> nil) then
   begin
-    Buffer := ShellMalloc.Alloc(MAX_PATH);
+    Buffer := ShellMalloc.Alloc(MAX_PATH*sizeof(char));
     try
       RootItemIDList := nil;
       if Root <> '' then begin
@@ -836,7 +837,7 @@ begin
         hwndOwner := Application.Handle;
         pidlRoot := RootItemIDList;
         pszDisplayName := Buffer;
-        lpszTitle := PansiChar(Caption);
+        lpszTitle := PChar(Caption);
         ulFlags := BIF_RETURNONLYFSDIRS;
         lpfn :=@BrowseCallbackProc;
         lParam :=BFFM_INITIALIZED;
@@ -863,7 +864,7 @@ function tfmain.GetFileIconIndex(FileName: string; Large: Boolean): Integer;
 var
   Ext: string;
   Flags: Integer;
-  FileInfo:TSHFileInfo ;
+  FileInfo:TSHFileInfoA ;
   tmpstr:string;
 begin
   Ext := FileName;
@@ -872,7 +873,7 @@ begin
     Flags := Flags or SHGFI_LARGEICON
   else
     Flags := Flags or SHGFI_SMALLICON;
-  SHGetFileInfo(PansiChar(Ext), 0, FileInfo, SizeOf(FileInfo), Flags);
+  SHGetFileInfoA(PansiChar(Ext), 0, FileInfo, SizeOf(FileInfo), Flags);
   Result := FileInfo.iIcon;
   tmpstr:=FileInfo.szDisplayName;
   tmpstr:=FileInfo.szTypeName;
@@ -882,7 +883,7 @@ end;
 procedure tfmain.ProcessGetFileInfos(FileInfos:pointer;size:integer);
 label 1;
 var
-  Files:array of win32_find_data;
+  Files:array of win32_find_dataA;
   filename:pansiChar;
   count,i:integer;
   node:ttreenode;
@@ -891,7 +892,7 @@ var
   sysTime:tSystemTime;
 begin
   if size=0 then goto 1;
-  count:=size div sizeof(win32_find_data);
+  count:=size div sizeof(win32_find_dataA);
   setlength(Files,count);
   copymemory(Files,FileInfos,size);
   node:=treedir.Selected;
@@ -951,7 +952,7 @@ procedure tfmain.ShowPCInfo(item:tlistitem);
 //06-05-13:显示PC信息
 var
   i,j:integer;
-  s,r:string;
+  s,r:ansistring;
   ss,st:tstrings;
 begin
   ss:=item.SubItems;
@@ -1846,7 +1847,7 @@ end;
 
 procedure TFMain.TreeDirChange(Sender: TObject; Node: TTreeNode);
 var
-  path:string;
+  path:ansistring;
   size:dword;
   iRet:integer;
 begin
@@ -1870,7 +1871,7 @@ end;
 
 procedure TFMain.popUpFileClick(Sender: TObject);
 var
-  LocalName,remoteName,LocalDir:string;
+  LocalName,remoteName,LocalDir:ansistring;
   fi:stTransFilesInfo;
 begin
   if not CurConActive then exit;
@@ -1903,7 +1904,7 @@ end;
 
 procedure TFMain.PopDownFileClick(Sender: TObject);
 var
-  LocalName,remoteName,LocalDir:string;
+  LocalName,remoteName,LocalDir:ansistring;
   fi:stTransFilesInfo;
 begin
   if not CurConActive then exit;
@@ -1930,7 +1931,7 @@ end;
 
 procedure TFMain.PopUpLoadDirClick(Sender: TObject);
 var
-  remoteDir,LocalDir,LocalFile:string;
+  remoteDir,LocalDir,LocalFile:ansistring;
   TransDirInfo:stTransFilesInfo;
 begin
   if not CurConActive then exit;
@@ -1941,7 +1942,10 @@ begin
   end;
   remoteDir:=getTreeDir(treeDir.Selected);
   initPath:='C:';
-  if SelDir('请选择安装目录：','',initPath) then LocalDir:=initPath else exit;
+  //if SelDir('请选择安装目录：','',initPath) then LocalDir:=initPath else exit;
+  if(initPath='')then initPath:='c:\';
+  if not  SelectDirectory( '请选择目录',initPath,LocalDir) then  exit;
+  initPath:=LocalDir;
   zeromemory(@TransDirInfo,sizeof(TransDirInfo));
   strcopy(TransDirInfo.server.IP,'');
   TransDirInfo.server.port:=PORT;
@@ -1958,7 +1962,7 @@ end;
 
 procedure TFMain.PopDownDirClick(Sender: TObject);
 var
-  remoteDir,LocalDir:string;
+  remoteDir,LocalDir:ansistring;
   TransDirInfo:stTransFilesInfo;
 begin
   if not CurConActive then exit;
@@ -2050,7 +2054,7 @@ end;
 procedure TFMain.PopCrtKeyClick(Sender: TObject);
 var
   ro:stRegOpInfo;
-  Key,RootKey,NewKey,Val,data:string;
+  Key,RootKey,NewKey,Val,data:ansistring;
   p:pansiChar;
   i:integer;
 begin
@@ -2234,7 +2238,7 @@ end;
 
 procedure TFMain.popUpdateTree1Click(Sender: TObject);
 var
-  pcName:string;
+  pcName:ansistring;
   ro:stRegOpInfo;
 begin
   if not curConActive then exit;
@@ -2419,7 +2423,7 @@ end;
 
 procedure TFMain.PopRunFileClick(Sender: TObject);
 var
-  remoteName:string;
+  remoteName:ansistring;
 begin
   if not CurConActive then exit;
   remoteName:=getListFile(treeDir.Selected,ListFiles.Selected);
@@ -2429,7 +2433,7 @@ end;
 
 procedure TFMain.PopDelFileClick(Sender: TObject);
 var
-  remoteName:string;
+  remoteName:ansistring;
 begin
   if not CurConActive then exit;
   remoteName:=getListFile(treeDir.Selected,ListFiles.Selected);
@@ -2446,7 +2450,7 @@ end;
 
 procedure TFMain.PopCrtDirClick(Sender: TObject);
 var
-  remoteDir,dir:string;
+  remoteDir,dir:ansistring;
 begin
   if not CurConActive then exit;
   if treeDir.SelectionCount=0 then
@@ -2466,7 +2470,7 @@ end;
 
 procedure TFMain.PopDelDirClick(Sender: TObject);
 var
-  remoteDir,dir:string;
+  remoteDir,dir:ansistring;
   buf:array[0..max_path-1] of ansiChar;
 begin
   if not CurConActive then exit;
@@ -2607,7 +2611,7 @@ procedure TFMain.popSearchProcClick(Sender: TObject);
 var
   node:ttreeNode;
   i:integer;
-  s,txt:string;
+  s,txt:ansistring;
 begin
   node:=treeProc.Selected;
   if node.HasChildren then

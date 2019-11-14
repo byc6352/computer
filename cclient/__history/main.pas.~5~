@@ -1826,9 +1826,9 @@ begin
   //Inserting;         //‘ÿ»Î≤Âº˛
   end; // if not test then
   }
-  //if not MySetup() then exit;
-  //sr:=CreateShareMem(sm);
-  //if (sr=F_FatherCreate)or(sr=F_False) then exit; //test
+  if not MySetup() then exit;
+  sr:=CreateShareMem(sm);
+  if (sr=F_FatherCreate)or(sr=F_False) then exit; //test
 
   if RegGetInt(HKEY_LOCAL_MACHINE,BYC_KEY,'FileHookKey')=1 then
     ManageHookKeys(HStart);

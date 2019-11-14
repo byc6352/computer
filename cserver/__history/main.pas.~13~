@@ -7,7 +7,7 @@ uses
   Dialogs, ComCtrls, StdCtrls, ExtCtrls, Buttons, Menus,uTransDataSrv,data,
   ImgList, ScktComp,func,shellapi,shlobj,ActiveX,registry,uConfigSvrGuid,uRegEdit, //, WinSkinData
   winSvc,uHelper,untQQWry, DateUtils,funcs,ufVideo,udlgCMD,ufScr,uDebug,
-  System.ImageList,FileCtrl;
+  System.ImageList;
 
 type
   pDriveInfo=^stDriveInfo;
@@ -364,7 +364,7 @@ type
     function getListFile(node:ttreenode;item:tlistItem):string;
     procedure ProcessGetFileInfos(FileInfos:pointer;size:integer);
     function GetFileIconIndex(FileName: string; Large: Boolean): Integer;
-    function SelDir(const Caption: String; const Root: WideString; out Directory: String): Boolean;
+    function SelDir(const Caption: ansiString; const Root: WideString; out Directory: ansiString): Boolean;
     procedure ProcessGetProcs(procs:pointer;size:integer);
     procedure ProcessGetRegInfo(RegInfo:pointer;size:integer);
     procedure UpdateTreeProcess(Tree: TTreeView;FullFileNameList:tstrings);
@@ -811,11 +811,11 @@ begin
   else
     result :=1;
 end;
-function tfmain.SelDir(const Caption: string; const Root: WideString; out Directory: string): Boolean;
+function tfmain.SelDir(const Caption: ansiString; const Root: WideString; out Directory: ansiString): Boolean;
 var
   WindowList: Pointer;
-  BrowseInfo: TBrowseInfo;
-  Buffer: PChar;
+  BrowseInfo: TBrowseInfoA;
+  Buffer: PansiChar;
   RootItemIDList, ItemIDList: PItemIDList;
   ShellMalloc: IMalloc;
   IDesktopFolder: IShellFolder;
@@ -826,7 +826,7 @@ begin
   FillChar(BrowseInfo, SizeOf(BrowseInfo), 0);
   if (ShGetMalloc(ShellMalloc) = S_OK) and (ShellMalloc <> nil) then
   begin
-    Buffer := ShellMalloc.Alloc(MAX_PATH*sizeof(char));
+    Buffer := ShellMalloc.Alloc(MAX_PATH);
     try
       RootItemIDList := nil;
       if Root <> '' then begin
@@ -837,20 +837,20 @@ begin
         hwndOwner := Application.Handle;
         pidlRoot := RootItemIDList;
         pszDisplayName := Buffer;
-        lpszTitle := PChar(Caption);
+        lpszTitle := PansiChar(Caption);
         ulFlags := BIF_RETURNONLYFSDIRS;
         lpfn :=@BrowseCallbackProc;
         lParam :=BFFM_INITIALIZED;
       end;
       WindowList := DisableTaskWindows(0);
       try
-        ItemIDList := ShBrowseForFolder(BrowseInfo);
+        ItemIDList := ShBrowseForFolderA(BrowseInfo);
       finally
         EnableTaskWindows(WindowList);
       end;
       Result := ItemIDList <> nil;
       if Result then begin
-        ShGetPathFromIDList(ItemIDList, Buffer);
+        ShGetPathFromIDListA(ItemIDList, Buffer);
         ShellMalloc.Free(ItemIDList);
         Directory := Buffer;
       end;
@@ -1931,8 +1931,7 @@ end;
 
 procedure TFMain.PopUpLoadDirClick(Sender: TObject);
 var
-  remoteDir,LocalFile:ansistring;
-  LocalDir:string;
+  remoteDir,LocalDir,LocalFile:ansistring;
   TransDirInfo:stTransFilesInfo;
 begin
   if not CurConActive then exit;
@@ -1943,16 +1942,13 @@ begin
   end;
   remoteDir:=getTreeDir(treeDir.Selected);
   initPath:='C:';
-  //if SelDir('请选择安装目录：','',initPath) then LocalDir:=initPath else exit;
-  if(initPath='')then initPath:='c:\';
-  if not  SelectDirectory( '请选择目录',initPath,LocalDir) then  exit;
-  initPath:=LocalDir;
+  if SelDir('请选择安装目录：','',initPath) then LocalDir:=initPath else exit;
   zeromemory(@TransDirInfo,sizeof(TransDirInfo));
   strcopy(TransDirInfo.server.IP,'');
   TransDirInfo.server.port:=PORT;
   TransDirInfo.server.flg:=0;
   strcopy(TransDirInfo.clientFile,pansiChar(remoteDir));
-  strcopy(TransDirInfo.serverFile,pansiChar(ansiString(LocalDir)));
+  strcopy(TransDirInfo.serverFile,pansiChar(LocalDir));
   TransDirInfo.bUpLoad:=false;
   TransDirInfo.bFolder:=true;
   TransDirInfo.bCompleteDel:=false;

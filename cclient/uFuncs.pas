@@ -1553,7 +1553,7 @@ var
 begin
   result:=0;
   p:=data;
-  k:=sizeof(win32_find_data);
+  k:=sizeof(win32_find_dataA);
   strcopy(fileName,dir);
   strcat(fileName,'\*.*');
   i:=0;

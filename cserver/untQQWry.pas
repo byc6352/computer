@@ -1,24 +1,4 @@
-{===============================================================================
-TQQWry
- Class with QQWry.DAT - by 冷风 (coldwind@citiz.net)
-
-   Status:  Freeware
- Compiler:  Delphi4, Delphi5, Delphi6, Delphi7
-  Version:  1.0
- Lastdate:  19 March 2005
-      Url:  http://51tec.vicp.net/
-
- 　　在此unit中，实现了对于纯真网络(www.cz88.net)的IP数据库的读取，该数据库是在
- 搜捕的基础上实现的，现广泛应用于QQ和各种论坛上，主要目的是获取IP地址和所在区域
- 的对应关系。
- 　　本unit中，对于所有的输入参数没有进行校验，请自行在输入参数前确定参数无误，
- 此外，对于如何使用，在本unit中进行了详细的注解，也有例程进行了一定说明。
- 　　对于IP的搜索，本程序仅仅通过二分法进行查找。
-
---------------------------------------------------------------------------------
-===============================================================================}
-
-unit untQQWry;
+unit untqqwry;
 
 interface
 
@@ -33,7 +13,8 @@ type
       function GetQQWryFileName: string;
       function GetQQWryFileSize: Cardinal;
       function GetIPRecordNum: Cardinal;
-      function GetQQWryDate: TDate;
+      //function GetQQWryDate: TDate;
+      function GetQQWryDate: String;
       function GetQQWryDataFrom: string;
       function GetIPLocation(IPLocationOffset: Cardinal): TStringlist;
       function GetIPMsg(IPRecordID: Cardinal): TStringlist;
@@ -49,11 +30,7 @@ type
 
 implementation
 
-///**
-//* 构造一个TQQWry即QQIP地址数据库的对象
-//* @param cQQWryFileName QQIP数据库文件的全名（包括路径），请确认文件存在和可读性
-//* @return 无
-//*/
+//
 constructor TQQWry.Create(cQQWryFileName: string);
 begin
   inherited Create;
@@ -65,52 +42,41 @@ begin
   IPRecordNum:=(LastIPIndexOffset - FirstIPIndexOffset) div 7 + 1;
 end;
 
-///**
-//* 析构函数，释放TQQWry对象，释放文件数据流对象
-//* @param  无
-//* @return 无
-//*/
+//
 destructor TQQWry.Destroy;
 begin
   QQWryFileStream.Free;
   inherited Destroy;
 end;
 
-///**
-//* 获取QQIP数据库文件的全名（包括路径）
-//* @param  无
-//* @return QQIP数据库文件的全名（包括路径）  string
-//*/
+//
 function TQQWry.GetQQWryFileName: string;
 begin
   Result:=QQWryFileName;
 end;
 
-///**
-//* 获取QQIP数据库文件大小
-//* @param  无
-//* @return QQIP数据库文件大小  Cardinal
-//*/
+//
 function TQQWry.GetQQWryFileSize: Cardinal;
 begin
   Result:=QQWryFileSize;
 end;
 
-///**
-//* 获取QQIP数据库内含有的IP地址信息记录条数
-//* @param  无
-//* @return QQIP数据库文件大小  Cardinal
-//*/
+//
 function TQQWry.GetIPRecordNum: Cardinal;
 begin
   Result:=IPRecordNum;
 end;
 
-///**
-//* 获取当前QQIP数据库的更新日期
-//* @param  无
-//* @return QQIP当前数据库的更新日期  TDate
-//*/
+//
+function TQQWry.GetQQWryDate: String;
+var
+  DateString: string;
+begin
+  DateString:=GetIPMsg(GetIPRecordNum)[3];
+  Result:=DateString;
+end;
+{
+//
 function TQQWry.GetQQWryDate: TDate;
 var
   DateString: string;
@@ -122,22 +88,14 @@ begin
   DateString:=StringReplace(DateString, '日', '-', [rfReplaceAll, rfIgnoreCase]);
   Result:=StrToDate(DateString);
 end;
-
-///**
-//* 获取当前QQIP数据库的来源信息
-//* @param  无
-//* @return 当前QQIP数据库的来源信息  string
-//*/
+ }
+//
 function TQQWry.GetQQWryDataFrom: string;
 begin
   Result:=GetIPMsg(GetIPRecordNum)[2];
 end;
 
-///**
-//* 给定一个IP国家地区记录的偏移，返回该IP地址的信息
-//* @param  IPLocationOffset  国家记录的偏移  Cardinal
-//* @return IP地址信息（国家信息/地区信息)  string
-//*/
+//
 function TQQWry.GetIPLocation(IPLocationOffset: Cardinal): TStringlist;
 const
   //实际信息字串存放位置的重定向模式
@@ -147,14 +105,10 @@ var
   RedirectMode: byte;
   CountryFirstOffset, CountrySecondOffset: Cardinal;
   CountryMsg, AreaMsg: string;
-  ///**
-  //* 给定一个文件偏移值，返回在数据文件中该偏移下的字符串，即读取到0结尾的字符前
-  //* @param  StringOffset  字符串在文件中的偏移值  Cardinal
-  //* @return 字符串  string
-  //*/
-  function ReadString(StringOffset: Cardinal): string;
+  //
+  function ReadString(StringOffset: Cardinal): ansistring;
   var
-    ReadByte: char;
+    ReadByte: ansichar;
   begin
     Result:='';
     QQWryFileStream.Seek(StringOffset, soFromBeginning);
@@ -164,12 +118,8 @@ var
       QQWryFileStream.Read(ReadByte, 1);
     end;
   end;
-  ///**
-  //* 给定一个地区信息偏移值，返回在数据文件中该偏移量下的地区信息
-  //* @param  AreaOffset 地区信息在文件中的偏移值  Cardinal;
-  //* @return 地区信息字符串  string
-  //*/
-  function ReadArea(AreaOffset: Cardinal): string;
+  //
+  function ReadArea(AreaOffset: Cardinal): ansistring;
   var
     ModeByte: byte;
     ReadAreaOffset: Cardinal;
@@ -228,11 +178,7 @@ begin
   Result.Add(AreaMsg);
 end;
 
-///**
-//* 给定一个IP地址信息记录号，返回该项记录的信息
-//* @param  IPRecordID  IP地址信息记录号  Cardinal
-//* @return 记录号信息（含3个部分：①起始IP地址  ②终止IP地址  ③国家信息/地区信息)  TStringlist
-//*/
+//
 function TQQWry.GetIPMsg(IPRecordID: Cardinal): TStringlist;
 var
   aryStartIP: array[1..4] of byte;
@@ -241,7 +187,7 @@ var
   EndIPOffset: Cardinal;
   aryEndIP: array[1..4] of byte;
   strEndIP: string;
-  
+
   i: integer;
 begin
   //根据记录ID号移到该记录号的索引处
@@ -273,15 +219,11 @@ begin
   Result.Add(strStartIP);
   Result.Add(strEndIP);
   //获取该条记录下的IP地址信息
-  //以下三者是统一的：①内容区域的偏移值  ②终止IP地址的存放位置  ③国家信息紧接在终止IP地址存放位置后
+  //以下三者是统一的：&#9312;内容区域的偏移值  &#9313;终止IP地址的存放位置  &#9314;国家信息紧接在终止IP地址存放位置后
   Result.AddStrings(GetIPLocation(EndIPOffset));
 end;
 
-///**
-//* 给定一个IP地址（四段点分字符串形式），返回该IP的数值
-//* @param  IP  IP地址（四段点分字符串形式）  string
-//* @return 该IP的数值  Cardinal
-//*/
+//
 function TQQWry.GetIPValue(IP: string): Cardinal;
 var
   tsIP: TStringlist;
@@ -303,11 +245,7 @@ begin
   end;
 end;
 
-///**
-//* 给定一个IP地址（四段点分字符串形式），返回该IP地址所在的记录号
-//* @param  IP  IP地址（四段点分字符串形式）  string
-//* @return 该IP地址所在的记录号  Cardinal
-//*/
+//
 function TQQWry.GetIPRecordID(IP: string): Cardinal;
   function SearchIPRecordID(IPRecordFrom, IPRecordTo, IPValue: Cardinal): Cardinal;
   var
@@ -332,7 +270,8 @@ function TQQWry.GetIPRecordID(IP: string): Cardinal;
         end;
   end;
 begin
-  Result:=SearchIPRecordID(1, GetIPRecordNum, GetIPValue(IP));      
+  Result:=SearchIPRecordID(1, GetIPRecordNum, GetIPValue(IP));
 end;
 
 end.
+
