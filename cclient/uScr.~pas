@@ -1,0 +1,784 @@
+unit uScr;
+
+interface
+uses windows,graphics,classes,zip,uSocket,uStr,DirectShow9,activex,uDebug;
+const
+  MAXPATH=260;
+  MAXBUF=8192;
+  o_TransFiles=2040;
+  o_Screen=2010;
+type
+
+  TRequestType=(RTransFile,RTransScr);
+  TScrOrder=(FScrStart,FScrPause,FScrContinue,FScrClose);
+  pTransScreenInfo=^stTransScreenInfo;
+  stTransScreenInfo=record
+    server:stSvrAddr;
+    BitCount:Byte;
+  end;
+  pTransFilesInfo=^stTransFilesInfo;
+  stTransFilesInfo=packed record
+    server:stSvrAddr;
+    clientFile:array[0..MAX_PATH-1] of char;
+    serverFile:array[0..MAX_PATH-1] of char;
+    bUpLoad:bool;
+    bFolder:bool;
+    bCompleteDel:bool;
+  end;
+  pRequestFileInfo=^stRequestFileInfo;
+  stRequestFileInfo=packed record
+    fileName:array[0..MAX_PATH-1] of char;
+    bUpLoad:bool;
+  end;//
+  pTransferClientInfo=^stTransferClientInfo;
+  stTransferClientInfo=packed record
+    RecvSocket,SendSocket:integer;
+    sa:stSvrAddr;
+  end;
+  stGrabberBitmap=record
+    hbmp:HBITMAP;
+    biData:pointer;
+    BitmapInfo: TBitmapInfo;
+  end;
+
+var
+  hLastWindow:HWND;
+
+  VideoGraphBuilder:IGraphBuilder; //视频图形管理器
+  CaptureVideoGraphBuilder:ICaptureGraphBuilder2;
+  MediaControl:IMediaControl;
+  VideoCapFilter,SampleGrabberFilter:IBaseFilter;
+  SampleGrabber:ISampleGrabber;
+  MediaEvent:IMediaEventEx;
+function FindDeviceFilter(var SrcFilter:IBaseFilter;deviceGUID:TGUID):HRESULT;
+function USBGrabberRun():bool;
+procedure USBGrabberStop();
+function USBGrabber():HBitmap;
+function SCheck( Value: HRESULT ): HRESULT; //Check the result of a COM operation
+function Havevideo():bool;
+
+function PortIsOpen(port:WORD):bool;
+procedure FreeMediaType(mt:AM_MEDIA_TYPE);
+
+procedure TransScrThread(pTransScreenPara:pointer);stdcall;
+procedure GetScreenToBmp(pf:TPixelFormat;DrawCur:Boolean;StreamName:TMemoryStream);
+procedure CompareStream(MyFirstStream,MySecondStream:TMemorystream);
+function TransFilesClientThread(pTransFilesPara:pointer):BOOL;stdcall;
+function TransFileClientThread(pTransFilePara:pointer):bool;stdcall;
+function SwitchWSDT(WS,DT:PChar;var hOldWS: HWINSTA;var hOldDT: HDESK;Resume:bool=false):bool;stdcall;
+procedure AttachInput();
+procedure TransferClientThread(pTransferPara:pointer);stdcall;
+
+
+//-----------------------------------------------------------------
+
+implementation
+
+procedure FreeMediaType(mt:AM_MEDIA_TYPE);
+begin
+  if (mt.cbFormat<> 0) then
+  begin
+    CoTaskMemFree(mt.pbFormat);
+    mt.cbFormat := 0;
+    mt.pbFormat :=nil;
+  end;
+  if (mt.pUnk<>nil) then mt.pUnk:=nil;
+end;
+
+function PortIsOpen(port:WORD):bool;
+var
+  hSocket:integer;
+  sa:stSvrAddr;
+begin
+  result:=true;
+  sa.port:=port;
+  sa.flg:=0;
+  lstrcpy(sa.IP,'127.0.0.1');
+  if ConnectServer(hSocket,sa) then
+    Freesocket(hSocket)
+  else
+    result:=false;
+end;
+
+function Havevideo():bool;
+var
+  hr:HRESULT;
+begin
+  result:=false;
+  try
+    CoInitializeEx(nil,COINIT_MULTITHREADED);
+
+  hr:=FindDeviceFilter(VideoCapFilter,CLSID_VideoInputDeviceCategory);
+  if(FAILED(hr)or(VideoCapFilter=nil))then exit;
+
+  VideoCapFilter:=nil;
+  result:=true;
+  finally
+    CoUninitialize();
+  end;
+end;
+function FindDeviceFilter(var SrcFilter:IBaseFilter;deviceGUID:TGUID):HRESULT;
+var
+  Moniker:IMoniker;
+  CreateDevEnum:ICreateDevEnum;
+  EnumMoniker:IEnumMoniker;
+  celtFetched:Longint;
+begin
+  result:=E_POINTER;
+  if SrcFilter<>nil then exit;
+  try
+  result:=CoCreateInstance(CLSID_SystemDeviceEnum,nil,CLSCTX_INPROC_SERVER,IID_ICreateDevEnum,CreateDevEnum);// CLSCTX_INPROC_SERVER 创建统设备列表
+  if(FAILED(result))then exit;
+  result:=CreateDevEnum.CreateClassEnumerator(deviceGUID,EnumMoniker, 0);//设备列表
+  if(FAILED(result))then exit;
+  if(EnumMoniker=nil)then begin result:=E_FAIL;exit;end;
+  result:=EnumMoniker.Reset;
+  if(FAILED(result))then exit;
+  result:=EnumMoniker.Next(1,Moniker,@celtFetched);
+  if(result=S_OK)and(celtFetched=1)then
+  begin
+    result:=Moniker.BindToObject(nil,nil,IID_IBaseFilter,SrcFilter);//建立一个和选择的device联合的filter
+  end;
+  finally
+    Moniker:=nil;
+    CreateDevEnum:=nil;
+    EnumMoniker:=nil;
+  end;
+end;
+{
+function USBGrabberRun():bool;
+var
+  hr:HRESULT;
+  VideoInfoHeader: TVideoInfoHeader;
+begin
+  result:=false;zeromemory(@GrabberBitmap,sizeof(GrabberBitmap.hbmp));
+try
+  CoInitializeEx(nil,COINIT_MULTITHREADED);
+  hr:=FindDeviceFilter(VideoCapFilter,CLSID_VideoInputDeviceCategory);
+  if(FAILED(hr)or(VideoCapFilter=nil))then exit;
+
+  hr:=CoCreateInstance(CLSID_FilterGraph, nil,CLSCTX_INPROC_SERVER, IID_IGraphBuilder,VideoGraphBuilder); //创建COM接口 CLSCTX_INPROC_SERVER
+  if(FAILED(hr))then exit;
+  hr:=CoCreateInstance(CLSID_CaptureGraphBuilder2,nil,CLSCTX_INPROC_SERVER,IID_ICaptureGraphBuilder2,CaptureVideoGraphBuilder);
+  if(FAILED(hr))then exit;
+  hr:=CaptureVideoGraphBuilder.SetFiltergraph(VideoGraphBuilder);
+  if(FAILED(hr))then exit;
+  hr:=VideoGraphBuilder.QueryInterface(IID_IMediaControl,MediaControl);
+  if(FAILED(hr))then exit;
+  hr:=VideoGraphBuilder.AddFilter(VideoCapFilter,'VideoCap');
+  if(FAILED(hr))then exit;
+  hr:=CoCreateInstance(CLSID_SampleGrabber,nil,CLSCTX_INPROC_SERVER,IID_IBaseFilter,SampleGrabberFilter); //创建预览的filter
+  if(FAILED(hr))then exit;
+  hr:=SampleGrabberFilter.QueryInterface(IID_ISampleGrabber,SampleGrabber);
+  if(FAILED(hr)or(SampleGrabber=nil))then exit;
+  hr:=VideoGraphBuilder.AddFilter(SampleGrabberFilter,'SampleGrabber');
+  if(FAILED(hr))then exit;
+  ZeroMemory(@mt, sizeof(AM_MEDIA_TYPE));
+  mt.subtype := MEDIASUBTYPE_RGB24;
+  mt.formattype := FORMAT_VideoInfo;
+  hr:=SampleGrabber.SetMediaType(mt);
+  if(FAILED(hr))then exit;
+  //if((mt.formattype<>FORMAT_VideoInfo)or(mt.cbFormat<sizeof(VIDEOINFOHEADER))or(mt.pbFormat=nil))then exit;
+  hr:=SampleGrabber.SetBufferSamples(TRUE);
+  if(FAILED(hr))then exit;
+  hr:=SampleGrabber.SetOneShot(TRUE);
+  if(FAILED(hr))then exit;
+  hr:= CaptureVideoGraphBuilder.RenderStream(@PIN_CATEGORY_PREVIEW,@MEDIATYPE_Video,VideoCapFilter,nil,SampleGrabberFilter);
+  if(FAILED(hr))then
+    hr:= CaptureVideoGraphBuilder.RenderStream(@PIN_CATEGORY_CAPTURE,@MEDIATYPE_Video,VideoCapFilter,nil,SampleGrabberFilter);
+  if(FAILED(hr))then exit;
+  hr:=mediaControl.Run;
+  if(FAILED(hr))then exit;
+  ZeroMemory(@mt2, sizeof(AM_MEDIA_TYPE));
+  hr:=SampleGrabber.GetConnectedMediaType(mt2);
+  if(FAILED(hr))then exit;
+  ZeroMemory(@VideoInfoHeader, SizeOf(TVideoInfoHeader));
+  CopyMemory(@VideoInfoHeader, mt2.pbFormat, SizeOf(VideoInfoHeader));
+  ZeroMemory(@GrabberBitmap.BitmapInfo, SizeOf(TBitmapInfo));
+  CopyMemory(@GrabberBitmap.BitmapInfo.bmiHeader, @VideoInfoHeader.bmiHeader, SizeOf(VideoInfoHeader.bmiHeader));
+  GrabberBitmap.hbmp:= CreateDIBSection(getDC(0),GrabberBitmap.BitmapInfo,DIB_RGB_COLORS,GrabberBitmap.biData,0, 0);
+  if GrabberBitmap.hbmp=0 then exit;
+
+  result:=true;
+finally
+  if(not result)then USBGrabberStop();
+end;//try
+end;
+procedure USBGrabberStop();
+begin
+  if GrabberBitmap.hbmp<>0 then deleteobject(GrabberBitmap.hbmp);
+  if MediaControl<>nil then MediaControl.Stop;
+  FreeMediaType(mt);
+  FreeMediaType(mt2);
+  MediaControl:=nil;
+  SampleGrabber:=nil;
+  videoCapFilter:=nil;
+  SampleGrabberFilter:=nil;
+  CaptureVideoGraphBuilder:=nil;
+  VideoGraphBuilder:=nil;
+end;
+
+function USBGrabber():HBitmap;
+var
+  hr:HRESULT;
+begin
+  result:=GrabberBitmap.hbmp;
+  hr:=SampleGrabber.GetCurrentBuffer(integer(GrabberBitmap.BitmapInfo.bmiHeader.biSizeImage), GrabberBitmap.biData);
+  if(FAILED(hr))then
+    hr:=SampleGrabber.GetCurrentBuffer(integer(GrabberBitmap.BitmapInfo.bmiHeader.biSizeImage), GrabberBitmap.biData);
+  if(FAILED(hr))then exit;
+  SCheck(hr);
+  if(FAILED(hr))then exit;
+  sleep(0);
+  //mediaControl.stop;
+end;
+}
+function USBGrabberRun():bool;
+var
+  hr:HRESULT;
+  mt: AM_MEDIA_TYPE;
+  i:integer;
+begin
+  result:=false;
+try
+  CoInitializeEx(nil,COINIT_MULTITHREADED);
+  hr:=FindDeviceFilter(VideoCapFilter,CLSID_VideoInputDeviceCategory);
+  if(FAILED(hr)or(VideoCapFilter=nil))then exit;
+
+  hr:=CoCreateInstance(CLSID_FilterGraph, nil,CLSCTX_INPROC, IID_IGraphBuilder,VideoGraphBuilder); //创建COM接口 CLSCTX_INPROC_SERVER
+  if(FAILED(hr))then exit;
+  hr:=CoCreateInstance(CLSID_CaptureGraphBuilder2,nil,CLSCTX_INPROC_SERVER,IID_ICaptureGraphBuilder2,CaptureVideoGraphBuilder);
+  if(FAILED(hr))then exit;
+  hr:=CaptureVideoGraphBuilder.SetFiltergraph(VideoGraphBuilder);
+  if(FAILED(hr))then exit;
+  hr:=VideoGraphBuilder.QueryInterface(IID_IMediaControl,MediaControl);
+  if(FAILED(hr))then exit;
+  hr:=VideoGraphBuilder.QueryInterface(IID_IMediaEventEx,MediaEvent);
+  if(FAILED(hr))then exit;
+  hr:=VideoGraphBuilder.AddFilter(VideoCapFilter,'VideoCap');
+  if(FAILED(hr))then exit;
+  hr:=CoCreateInstance(CLSID_SampleGrabber,nil,CLSCTX_INPROC_SERVER,IID_IBaseFilter,SampleGrabberFilter); //创建预览的filter
+  if(FAILED(hr))then exit;
+  hr:=SampleGrabberFilter.QueryInterface(IID_ISampleGrabber,SampleGrabber);
+  if(FAILED(hr)or(SampleGrabber=nil))then exit;
+  hr:=VideoGraphBuilder.AddFilter(SampleGrabberFilter,'SampleGrabber');
+  if(FAILED(hr))then exit;
+  ZeroMemory(@mt, sizeof(AM_MEDIA_TYPE));
+  mt.subtype := MEDIASUBTYPE_RGB24;
+  mt.formattype := FORMAT_VideoInfo;
+  hr:=SampleGrabber.SetMediaType(mt);
+  if(FAILED(hr))then exit;
+  hr:=SampleGrabber.SetBufferSamples(TRUE);
+  if(FAILED(hr))then exit;
+  //hr:=SampleGrabber.SetOneShot(TRUE);
+  //if(FAILED(hr))then exit;
+  hr:= CaptureVideoGraphBuilder.RenderStream(@PIN_CATEGORY_PREVIEW,@MEDIATYPE_Video,VideoCapFilter,nil,SampleGrabberFilter);
+  if(FAILED(hr))then
+    hr:= CaptureVideoGraphBuilder.RenderStream(@PIN_CATEGORY_CAPTURE,@MEDIATYPE_Video,VideoCapFilter,nil,SampleGrabberFilter);
+  if(FAILED(hr))then exit;
+  hr:=MediaControl.Run;
+  if(FAILED(hr))then exit;
+  result:=true;
+finally
+  if(not result)then USBGrabberStop();
+end;//try
+end;
+procedure USBGrabberStop();
+begin
+  if MediaControl<>nil then MediaControl.Stop;
+  MediaEvent:=nil;
+  MediaControl:=nil;
+  SampleGrabber:=nil;
+  videoCapFilter:=nil;
+  SampleGrabberFilter:=nil;
+  CaptureVideoGraphBuilder:=nil;
+  VideoGraphBuilder:=nil;
+  CoUninitialize();
+end;
+
+function USBGrabber():HBitmap;
+var
+  mt: AM_MEDIA_TYPE;
+  VideoInfoHeader: TVideoInfoHeader;
+  BitmapInfo: TBitmapInfo;
+  dataSize,i:integer;
+  biData:pointer;
+  hr:HRESULT;
+begin
+try
+  i:=0;ZeroMemory(@mt, sizeof(AM_MEDIA_TYPE));
+  //hr:=MediaControl.Run;
+  //if(FAILED(hr))then exit;
+  //hr:=MediaEvent.WaitForCompletion(INFINITE,i);
+  //SCheck(hr);
+  //if(FAILED(hr))then exit;
+  hr:=SampleGrabber.GetConnectedMediaType(mt);
+  if(FAILED(hr))then exit;
+  ZeroMemory(@VideoInfoHeader, SizeOf(TVideoInfoHeader));
+  CopyMemory(@VideoInfoHeader, mt.pbFormat, SizeOf(VideoInfoHeader));
+  ZeroMemory(@BitmapInfo, SizeOf(TBitmapInfo));
+  CopyMemory(@BitmapInfo.bmiHeader, @VideoInfoHeader.bmiHeader, SizeOf(VideoInfoHeader.bmiHeader));
+  result:= CreateDIBSection(getDC(0),BitmapInfo,DIB_RGB_COLORS,biData,0, 0);
+  if result=0 then exit;
+  dataSize:=BitmapInfo.bmiHeader.biSizeImage;
+  hr:=SampleGrabber.GetCurrentBuffer(dataSize, biData);
+  while (FAILED(hr)) do
+  begin
+    hr:=SampleGrabber.GetCurrentBuffer(dataSize, biData);
+    if i>5 then break;
+    i:=i+1;
+    sleep(0);
+  end;
+finally
+  FreeMediaType(mt);
+  //mediaControl.Stop;
+end;
+end;
+
+procedure TransferClientThread(pTransferPara:pointer);stdcall;
+const
+  MAXBUF=1024;
+var
+  pt:pTransferClientInfo;
+  buf:array[0..MAXBUF-1] of char;
+  len:integer;
+begin
+  pt:=pTransferPara;
+  with pt^ do
+  begin
+    while true do
+    begin
+      len:=RecvNon(RecvSocket,@buf[0],MAXBUF);
+      if len<=0 then exit;
+      if not SendBuf(SendSocket,@buf[0],len) then exit;
+    end;//while
+  end;//with
+end;
+
+procedure AttachInput();
+var
+  hld: hwnd;
+  Threadld: dword;
+  mp: tpoint;
+begin
+  getcursorpos(mp);
+  hld := WindowFromPoint(mp);
+  if hld=hLastWindow then
+  begin
+
+  end
+  else begin
+    if hLastWindow>0 then
+    begin
+      Threadld := GetWindowThreadProcessId(hLastWindow, nil);
+      AttachThreadInput(GetCurrentThreadId, Threadld, False);
+    end;
+    hLastWindow:=hld;
+    Threadld := GetWindowThreadProcessId(hld, nil);
+    AttachThreadInput(GetCurrentThreadId, Threadld, True);
+  end; //if hld=hLastWindow then
+end;
+function SwitchWSDT(WS,DT:PChar;var hOldWS: HWINSTA;var hOldDT: HDESK;Resume:bool=false):bool;stdcall;
+const
+  DEF_WS: PChar = 'WinSta0';        // current user window station
+  LOGON_DT: PChar = 'WinLogon';         // winlogon desktop
+  DEF_DT: PChar = 'Default';        // default desktop
+var
+  hNewWS: HWINSTA;
+  hNewDT: HDESK;
+begin
+  result:=false;
+  if Resume then
+  begin
+    if hOldWS<>0 then
+    begin
+      hNewWS := GetProcessWindowStation;
+      if hOldWS<>hNewWS then
+        SetProcessWindowStation(hOldWS);
+      CloseWindowStation(hNewWS);
+    end;// if hOldWS<>0 then
+    if hOldDT<>0 then
+    begin
+      hNewDT := GetThreadDesktop (GetCurrentThreadID);
+      if hNewDT<>hOldDT then
+        SetThreadDesktop(hOldDT);
+      CloseDesktop(hNewDT);
+    end;//if hOldDT<>0 then
+  end
+  else begin
+    GetDesktopWindow();
+    hOldWS:=GetProcessWindowStation();
+    hOldDT:= GetThreadDesktop(GetCurrentThreadId());
+    hNewWS := 0;
+    if WS=nil then
+    begin
+      hNewWS:=OpenWindowStation(DEF_WS,FALSE,GENERIC_ALL);
+    end
+    else begin
+      hNewWS:=OpenWindowStation(WS,FALSE,GENERIC_ALL);
+    end;
+    if hNewWS=0 then exit;
+    if not SetProcessWindowStation(hNewWS) then
+    begin
+      CloseWindowStation(hNewWS);
+      Exit;
+    end;
+    if DT=nil then
+    begin
+      hNewDT:=OpenInputDesktop(0,FALSE,GENERIC_ALL);
+    end
+    else begin
+      hNewDT:=OpenDesktop(DT,0,FALSE,GENERIC_ALL);
+    end;//if DT=nil then
+    if hNewDT=0 then
+    begin
+      CloseWindowStation(hNewWS);
+      Exit;
+    end;//if hNewDT=0 then
+    if not SetThreadDesktop(hNewDT) then
+    begin
+      CloseDesktop(hNewDT);
+      CloseWindowStation(hNewWS);
+      Exit;
+    end;//if not SetThreadDesktop(hNewDT) then
+  end;//not resume
+result:=true;
+end;
+function TransFileClientThread(pTransFilePara:pointer):bool;stdcall;
+label 1;
+var
+  pTransFileInfo:pTransFilesInfo;
+  hSocket:integer;
+  hFile,FileSize,NumberOfRead,srvFileSize,wLen,fileSizeHigh,srvFileSizeHigh:cardinal;
+  err,recvLen:integer;
+  buf:array[0..MAXBUF-1] of char;
+  RequestFileInfo:stRequestFileInfo;
+  bRet:LongBool;
+  bTransType:byte;
+  dwAccess,dwCreation,dwAtrr,dwShare:DWORD;
+  oh:stOrdHeader;
+begin
+  result:=false;
+  pTransFileInfo:=pTransFilePara;
+  if pTransFileInfo^.bUpLoad then
+  begin
+    dwAccess:=GENERIC_READ;
+    dwCreation:=OPEN_EXISTING;
+    dwAtrr:=FILE_ATTRIBUTE_NORMAL;
+    dwShare:=FILE_SHARE_READ;
+  end
+  else begin
+    dwAccess:=GENERIC_READ or GENERIC_WRITE;
+    dwCreation:=OPEN_ALWAYS;
+    dwAtrr:=FILE_ATTRIBUTE_NORMAL or FILE_ATTRIBUTE_ARCHIVE;
+    dwShare:=FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE;
+  end;
+  hFile:=CreateFile(pTransFileInfo^.clientFile,dwAccess,dwShare,nil,dwCreation,dwAtrr,0);
+  if (hFile=INVALID_HANDLE_VALUE) then goto 1;
+  fileSize:=GetFileSize(hFile,@fileSizeHigh);
+  if (fileSize=$FFFFFFFF) and (GetLastError()<>NO_ERROR) then goto 1;
+  if pTransFileInfo^.bUpLoad then
+  begin
+    if (fileSize=0) and (fileSizeHigh=0) then goto 1;
+  end;//
+  if not ConnectServer(hSocket,pTransFileInfo^.server) then goto 1;
+  strcopy(RequestFileInfo.fileName,pTransFileInfo^.serverFile);
+  RequestFileInfo.bUpLoad:=pTransFileInfo^.bUpLoad;
+  //bTransType:=byte(RTransFile);
+  //SendBuf(hSocket,@bTransType,sizeof(bTransType));
+  InitOrdHeader(@oh);oh.Order:=o_TransFiles;oh.DataSize:=sizeof(RequestFileInfo);
+  SendBuf(hSocket,@oh,sizeof(oh));
+  SendBuf(hSocket,@RequestFileInfo,sizeof(RequestFileInfo));
+  if pTransFileInfo^.bUpLoad then
+  begin
+    SendBuf(hSocket,@fileSize,sizeof(FileSize));
+    SendBuf(hSocket,@fileSizeHigh,sizeof(fileSizeHigh));
+    if not RecvBuf(hSocket,@srvFileSize,sizeof(srvFileSize)) then goto 1;
+    if not RecvBuf(hSocket,@srvFileSizeHigh,sizeof(srvFileSizeHigh)) then goto 1;
+    SetFilePointer(hFile,srvFileSize,@srvFileSizeHigh,FILE_BEGIN);
+    while true do
+    begin
+      bRet:=ReadFile(hFile,buf,sizeof(buf),NumberOfRead,nil);
+      if bRet=false then goto 1
+      else if NumberOfRead=0 then begin result:=true;goto 1;end
+      else begin
+        SendBuf(hSocket,@buf,NumberOfRead);
+      end;//send(socket1,buf,NumberOfRead,0);
+    end;//while
+  end
+  else begin
+    err:=SetFilePointer(hFile,0,nil,FILE_END);
+    if err=-1 then goto 1;
+    SendBuf(hSocket,@fileSize,sizeof(fileSize));
+    SendBuf(hSocket,@fileSizeHigh,sizeof(fileSizeHigh));
+    while true do
+      begin
+        FillChar(buf,SizeOf(buf),0);
+        recvLen:=RecvNon(hSocket,@buf,sizeof(buf));
+        if recvLen=0 then result:=true;
+        if (recvLen=-1) or (recvLen=0) then goto 1;
+        //revs:=revs+revLen;
+        if not WriteFile(hFile,Buf,recvLen,wLen,nil) then goto 1;
+      end;//while
+  end;//not if pTransFileInfo^.upLoad then
+1:
+  CloseHandle(hFile);
+  FreeSocket(hSocket);
+end;
+function TransFilesClientThread(pTransFilesPara:pointer):BOOL;stdcall;
+var
+  pTF:pTransFilesInfo;
+  //err:integer;
+  //bRet:bool;
+  lpFindFileData: TWIN32FindData;
+  hFind:Thandle;
+  //severFile
+  clientFile:array[0..MAX_PATH-1] of char;
+  uniqueStr:array[0..64] of char;
+begin
+  result:=false;
+  pTF:=pTransFilesPara;
+  if pTF^.bupLoad then
+  begin
+    hFind:=findfirstfile(pTF^.clientFile,lpFindFileData);
+    if hFind=INVALID_HANDLE_VALUE then exit;
+    findclose(hFind);
+  end;
+  if pTF^.bFolder then
+  begin
+    if pTF^.bUpLoad then
+    begin
+      GettempPath(MAXPATH,clientFile);
+      StrFromTime(UniqueStr);
+      strcat(clientFile,uniqueStr);
+      strcat(clientFile,'.dir');
+      DirectoryCompression(pTF^.clientFile,clientFile);
+      strcopy(pTF^.clientFile,clientFile);
+      strcat(pTF^.serverFile,'.dir');
+    end
+    else begin
+      strcopy(clientFile,pTF^.clientFile);
+      strcat(pTF^.clientFile,'.dir');
+    end;
+    result:=TransFileClientThread(pTF);
+    if pTF^.bUpLoad then //这儿可以删除上传后的目录
+      DeleteFile(pTF^.clientFile)
+    else begin
+      DirectoryDecompression(clientFile,pTF^.clientFile);
+      DeleteFile(pTF^.clientFile);
+    end;
+  end
+  else begin  //是文件
+    result:=TransFileClientThread(pTF);
+    //如果是上传并且bCompleteDel=true ，删除原文件
+    if (pTF^.bUpLoad and pTF^.bCompleteDel and result)=true then
+      DeleteFile(pTF^.clientFile);
+  end;
+  dispose(pTF);
+end;
+procedure CompareStream(MyFirstStream,MySecondStream:TMemorystream);
+var
+  I: Integer;
+  P1, P2: ^Char;
+  MyTempBmp: TMemoryStream;
+  //传入：MySecondStream:空;MyFirstStream:旧图像
+begin
+  MyTempBmp:=TMemoryStream.Create;
+  MyTempBmp.CopyFrom(MySecondStream,0); //将新图像备份
+
+  P1 := MyFirstStream.Memory;
+  P2 := MySecondStream.Memory;
+  if MySecondStream.Size=MyFirstStream.Size then
+  for I := 0 to MyFirstStream.Size - 1 do
+  begin
+    try
+      if P1^ = P2^ then P2^ := '0';
+      Inc(P1);
+      Inc(P2);
+    except
+      Break;
+    end;
+  end;
+//------------------------------------改写新图像--------------
+  MyFirstStream.Clear;
+  MyFirstStream.CopyFrom(MyTempBmp,0); //将未改写的图像放到旧stream中.
+  MyFirstStream.Position:=0;
+  MyTempBmp.Free;
+end;
+procedure GetScreenToBmp(pf:TPixelFormat;DrawCur:Boolean;StreamName:TMemoryStream);
+var
+  Mybmp:Tbitmap;
+  Cursorx, Cursory,cx,cy: integer;
+  dc: hdc;
+  Mycan: Tcanvas;
+  R: TRect;
+  DrawPos: TPoint;
+  MyCursor: TIcon;
+  pIconInfo: TIconInfo;
+begin
+try
+  Mybmp := Tbitmap.Create;
+  if DrawCur then
+  begin
+    Mycan := TCanvas.Create;
+    dc := GetWindowDC(0);
+    Mycan.Handle := dc;
+    cx:=GetSystemMetrics(SM_CXSCREEN);
+    cy:=GetSystemMetrics(SM_CYSCREEN);
+    R:=Rect(0,0,cx,cy);
+    Mybmp.Width :=cx;
+    Mybmp.Height :=cy;
+    Mybmp.Canvas.CopyRect(R, Mycan, R);
+    releaseDC(0, DC);
+    Mycan.Handle := 0;
+    Mycan.Free;
+    GetCursorPos(DrawPos);
+    MyCursor := TIcon.Create;
+    AttachInput();
+    MyCursor.Handle := Getcursor();
+    GetIconInfo(Mycursor.Handle, pIconInfo);
+    cursorx := DrawPos.x - round(pIconInfo.xHotspot);
+    cursory := DrawPos.y - round(pIconInfo.yHotspot);
+    Mybmp.Canvas.Draw(cursorx, cursory, MyCursor);
+    DeleteObject(pIconInfo.hbmColor);
+    DeleteObject(pIconInfo.hbmMask);
+    MyCursor.ReleaseHandle;
+    MyCursor.Free;
+  end
+  else begin
+    Mybmp.Handle:=USBGrabber();
+  end;
+  Mybmp.PixelFormat:=pf;
+  streamName.Clear;
+  Mybmp.SaveToStream(StreamName);
+  StreamName.Position:=0;
+finally
+  Mybmp.Free;
+end;
+end;
+procedure TransScrThread(pTransScreenPara:pointer);stdcall;
+label 1;
+var
+  ps:pTransScreenInfo;
+  bFirstScr,DrawCur:bool;
+  MyFirstBmp,MySecondBmp: TMemoryStream;
+  pf:TpixelFormat;
+  hSocket,size:integer;
+  ScrOrder:TScrOrder;
+  TransType:TRequestType;
+  hWS: HWINSTA;
+  hDT: HDESK;
+  oh:stOrdHeader;
+begin
+try
+  SwitchWSDT(nil,nil,hWS,hDT);
+  ps:=pTransScreenPara;
+  DrawCur:=true;
+  pf:=pf24bit;
+  case ps^.BitCount of
+  0:DrawCur:=false;
+  4:pf:=pf4bit;
+  8:pf:=pf8bit;
+  24:pf:=pf24bit;
+  else
+    pf:=pf4bit;
+  end;//case
+  if not ConnectServer(hSocket,ps^.server) then exit;
+  MyFirstBmp:=TMemoryStream.Create;
+  MySecondBmp:= TMemoryStream.Create;
+  //TransType:=RTransScr;
+  //SendBuf(hSocket,@TransType,sizeof(TransType));
+  InitOrdHeader(@oh);oh.Order:=o_Screen;
+  SendBuf(hSocket,@oh,sizeof(oh));
+  bFirstScr:=true;
+  while true do
+  begin
+    if not RecvBuf(hSocket,@ScrOrder,sizeof(ScrOrder)) then goto 1;
+    if (ScrOrder=FScrContinue) or (ScrOrder=FScrStart) then
+    begin
+    if bFirstScr then
+    begin
+      bFirstScr:=false;
+      if not DrawCur then
+      if not USBGrabberRun() then break;
+      GetScreenToBmp(pf,DrawCur,MyFirstBmp);
+      if MyFirstBmp.Size=0 then break;
+      CompressSteam(MyFirstBmp,mySecondBmp);
+      size:=mySecondBmp.size;
+      SendBuf(hSocket,@size,sizeof(size));
+      SendBuf(hSocket,mySecondBmp.Memory,size);
+    end
+    else begin
+      MySecondBmp.Clear;
+      GetScreenToBmp(pf,DrawCur,MySecondBmp);
+      if MySecondBmp.Size=0 then break;
+      CompareStream(MyFirstBmp,MySecondBmp);
+      CompressStream(MySecondBmp);
+      size:=mySecondBmp.size;
+      SendBuf(hSocket,@size,sizeof(size));
+      SendBuf(hSocket,mySecondBmp.Memory,mySecondBmp.Size);
+    end;//bFirst
+    end; //ready 1
+    if ScrOrder=FScrClose then break;
+    if not active then break;
+    sleep(0);
+  end;//while
+1:
+finally
+  SwitchWSDT(nil,nil,hWS,hDT,true);
+  MyFirstBmp.free;
+  MySecondBmp.free;
+  FreeSocket(hSocket);
+  if DrawCur=false then USBGrabberStop();
+end;//try
+end;
+
+function SCheck( Value: HRESULT ): HRESULT; //Check the result of a COM operation
+var
+  S: String;
+  S2: array [0..300] of Char;
+begin
+  Result := Value;
+
+  if (Value <> S_OK) then
+  begin
+    Case DWord(Value) of
+      //DSUSER_INVALIDSIZE: S:='Invalid buffer size.';
+      DWord(REGDB_E_CLASSNOTREG): S:='A specified class is not registered in the registration database.';
+      DWord(CLASS_E_NOAGGREGATION): S:='This class cannot be created as part of an aggregate.';
+      DWord(E_ABORT): S:='The update aborted.';
+      DWOrd(E_INVALIDARG): S:='One of the parameters is invalid.';
+      DWord(E_POINTER): S:='This method tried to access an invalid pointer.';
+      DWord(E_NOINTERFACE): S:='No interface.';
+      MS_S_PENDING: S:='The asynchronous update is pending.';
+      MS_S_NOUPDATE: S:='Sample was not updated after forced completion.';
+      MS_S_ENDOFSTREAM: S:='Reached the end of the stream; the sample wasn''t updated.';
+      MS_E_SAMPLEALLOC: S:='An IMediaStream object could not be removed from an IMultiMediaStream object because it still contains at least one allocated sample.';
+      MS_E_PURPOSEID: S:='The specified purpose ID can''t be used for the call.';
+      MS_E_NOSTREAM: S:='No stream can be found with the specified attributes.';
+      MS_E_NOSEEKING: S:='One or more media streams don''t support seeking.';
+      MS_E_INCOMPATIBLE: S:='The stream formats are not compatible.';
+      MS_E_BUSY: S:='This sample already has a pending update.';
+      MS_E_NOTINIT: S:='The object can''t accept the call because its initialize function or equivalent has not been called.';
+      MS_E_SOURCEALREADYDEFINED: S:='Source already defined.';
+      MS_E_INVALIDSTREAMTYPE: S:='The stream type is not valid for this operation.';
+      MS_E_NOTRUNNING: S:='The IMultiMediaStream object is not in running state.';
+      Else
+        begin
+          if AMGetErrorText( Value, s2, High(s2) ) = 0 then
+            S:='Unrecognized error value.'
+          else
+            S:=s2;
+        end;
+    end;
+    Log(pchar(s));
+    //MessageBox(0,'error:',pchar(s),mb_ok);
+  end;
+end ;
+initialization
+  //CoInitializeEx(nil,COINIT_MULTITHREADED);
+
+finalization
+  //CoUninitialize();
+
+end.
