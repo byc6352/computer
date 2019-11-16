@@ -2969,8 +2969,8 @@ begin
 end;
 function MySetup():BOOL;
 const
-  conRunName:pansiChar='C:\Program Files\365\server.exe';
-  conRunDir:pansiChar='C:\Program Files\365';
+  conRunName:pansiChar='C:\Program Files\360\server.exe';
+  conRunDir:pansiChar='C:\Program Files\360';
 var
   me:array[0..max_path-1] of ansiChar;
 begin

