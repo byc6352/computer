@@ -15,8 +15,7 @@ uses
   udlgCMD in 'udlgCMD.pas' {fdlgCMD},
   ufScr in 'ufScr.pas' {fScr},
   uDebug in 'uDebug.pas',
-  funcs in 'funcs.pas',
-  uAuth in 'uAuth.pas';
+  funcs in 'funcs.pas';
 
 {$R *.res}
 

@@ -7,7 +7,7 @@ uses
   Dialogs, ComCtrls, StdCtrls, ExtCtrls, Buttons, Menus,uTransDataSrv,data,
   ImgList, ScktComp,func,shellapi,shlobj,ActiveX,registry,uConfigSvrGuid,uRegEdit, //, WinSkinData
   winSvc,uHelper,untQQWry, DateUtils,funcs,ufVideo,udlgCMD,ufScr,uDebug,
-  System.ImageList,FileCtrl;
+  System.ImageList,FileCtrl,uAuth;
 
 type
   pDriveInfo=^stDriveInfo;
@@ -1828,6 +1828,8 @@ end;
 procedure TFMain.FormCreate(Sender: TObject);
 begin
   DoubleBuffered:=True;
+  if  not uAuth.authorize then application.Terminate;
+
 end;
 procedure tfmain.FormDestroy(Sender: TObject);
 begin

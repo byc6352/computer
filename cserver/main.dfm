@@ -3430,6 +3430,10 @@ object FMain: TFMain
     end
     object TabSheet1: TTabSheet
       Caption = #25991#20214#31649#29702
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object Splitter2: TSplitter
         Left = 195
         Top = 0
@@ -3484,6 +3488,10 @@ object FMain: TFMain
     object TabSheet2: TTabSheet
       Caption = #36827#31243#31649#29702
       ImageIndex = 1
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object TreeProc: TTreeView
         Left = 0
         Top = 0
@@ -3498,6 +3506,10 @@ object FMain: TFMain
     object TabSheet3: TTabSheet
       Caption = #27880#20876#34920#31649#29702
       ImageIndex = 2
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object Splitter3: TSplitter
         Left = 195
         Top = 0
@@ -3564,6 +3576,10 @@ object FMain: TFMain
     object TabSheet7: TTabSheet
       Caption = #26381#21153#31649#29702
       ImageIndex = 7
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object Splitter4: TSplitter
         Left = 321
         Top = 0
@@ -3672,6 +3688,10 @@ object FMain: TFMain
     object TabSheet4: TTabSheet
       Caption = #38190#30424#35760#24405
       ImageIndex = 3
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object MemoKeys: TMemo
         Left = 0
         Top = 0
@@ -3686,6 +3706,10 @@ object FMain: TFMain
     object TabSheet5: TTabSheet
       Caption = #23631#24149#30417#35270
       ImageIndex = 4
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object ScrollBox1: TScrollBox
         Left = 0
         Top = 0
@@ -3707,6 +3731,10 @@ object FMain: TFMain
     object tbsControlSet: TTabSheet
       Caption = #25511#21046#21488
       ImageIndex = 6
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object Splitter7: TSplitter
         Left = 0
         Top = 315
@@ -3966,6 +3994,10 @@ object FMain: TFMain
         Align = alClient
         TabOrder = 1
         object TabSheet8: TTabSheet
+          ExplicitLeft = 0
+          ExplicitTop = 0
+          ExplicitWidth = 0
+          ExplicitHeight = 0
           object memoOut: TMemo
             Left = 0
             Top = 0
@@ -3979,6 +4011,10 @@ object FMain: TFMain
         end
         object TabSheet9: TTabSheet
           ImageIndex = 1
+          ExplicitLeft = 0
+          ExplicitTop = 0
+          ExplicitWidth = 0
+          ExplicitHeight = 0
           object MemoThread: TMemo
             Left = 0
             Top = 0

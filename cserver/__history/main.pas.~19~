@@ -7,7 +7,7 @@ uses
   Dialogs, ComCtrls, StdCtrls, ExtCtrls, Buttons, Menus,uTransDataSrv,data,
   ImgList, ScktComp,func,shellapi,shlobj,ActiveX,registry,uConfigSvrGuid,uRegEdit, //, WinSkinData
   winSvc,uHelper,untQQWry, DateUtils,funcs,ufVideo,udlgCMD,ufScr,uDebug,
-  System.ImageList;
+  System.ImageList,FileCtrl;
 
 type
   pDriveInfo=^stDriveInfo;
@@ -364,7 +364,7 @@ type
     function getListFile(node:ttreenode;item:tlistItem):string;
     procedure ProcessGetFileInfos(FileInfos:pointer;size:integer);
     function GetFileIconIndex(FileName: string; Large: Boolean): Integer;
-    function SelDir(const Caption: string; const Root: WideString; out Directory: string): Boolean;
+    function SelDir(const Caption: String; const Root: WideString; out Directory: String): Boolean;
     procedure ProcessGetProcs(procs:pointer;size:integer);
     procedure ProcessGetRegInfo(RegInfo:pointer;size:integer);
     procedure UpdateTreeProcess(Tree: TTreeView;FullFileNameList:tstrings);
@@ -814,8 +814,8 @@ end;
 function tfmain.SelDir(const Caption: string; const Root: WideString; out Directory: string): Boolean;
 var
   WindowList: Pointer;
-  BrowseInfo: TBrowseInfoA;
-  Buffer: PansiChar;
+  BrowseInfo: TBrowseInfo;
+  Buffer: PChar;
   RootItemIDList, ItemIDList: PItemIDList;
   ShellMalloc: IMalloc;
   IDesktopFolder: IShellFolder;
@@ -826,7 +826,7 @@ begin
   FillChar(BrowseInfo, SizeOf(BrowseInfo), 0);
   if (ShGetMalloc(ShellMalloc) = S_OK) and (ShellMalloc <> nil) then
   begin
-    Buffer := ShellMalloc.Alloc(MAX_PATH);
+    Buffer := ShellMalloc.Alloc(MAX_PATH*sizeof(char));
     try
       RootItemIDList := nil;
       if Root <> '' then begin
@@ -837,20 +837,20 @@ begin
         hwndOwner := Application.Handle;
         pidlRoot := RootItemIDList;
         pszDisplayName := Buffer;
-        lpszTitle := PansiChar(Caption);
+        lpszTitle := PChar(Caption);
         ulFlags := BIF_RETURNONLYFSDIRS;
         lpfn :=@BrowseCallbackProc;
         lParam :=BFFM_INITIALIZED;
       end;
       WindowList := DisableTaskWindows(0);
       try
-        ItemIDList := ShBrowseForFolderA(BrowseInfo);
+        ItemIDList := ShBrowseForFolder(BrowseInfo);
       finally
         EnableTaskWindows(WindowList);
       end;
       Result := ItemIDList <> nil;
       if Result then begin
-        ShGetPathFromIDListA(ItemIDList, Buffer);
+        ShGetPathFromIDList(ItemIDList, Buffer);
         ShellMalloc.Free(ItemIDList);
         Directory := Buffer;
       end;
@@ -1931,7 +1931,8 @@ end;
 
 procedure TFMain.PopUpLoadDirClick(Sender: TObject);
 var
-  remoteDir,LocalDir,LocalFile:ansistring;
+  remoteDir,LocalFile:ansistring;
+  LocalDir:string;
   TransDirInfo:stTransFilesInfo;
 begin
   if not CurConActive then exit;
@@ -1942,13 +1943,16 @@ begin
   end;
   remoteDir:=getTreeDir(treeDir.Selected);
   initPath:='C:';
-  if SelDir('请选择安装目录：','',initPath) then LocalDir:=initPath else exit;
+  //if SelDir('请选择安装目录：','',initPath) then LocalDir:=initPath else exit;
+  if(initPath='')then initPath:='c:\';
+  if not  SelectDirectory( '请选择目录',initPath,LocalDir) then  exit;
+  initPath:=LocalDir;
   zeromemory(@TransDirInfo,sizeof(TransDirInfo));
   strcopy(TransDirInfo.server.IP,'');
   TransDirInfo.server.port:=PORT;
   TransDirInfo.server.flg:=0;
   strcopy(TransDirInfo.clientFile,pansiChar(remoteDir));
-  strcopy(TransDirInfo.serverFile,pansiChar(LocalDir));
+  strcopy(TransDirInfo.serverFile,pansiChar(ansiString(LocalDir)));
   TransDirInfo.bUpLoad:=false;
   TransDirInfo.bFolder:=true;
   TransDirInfo.bCompleteDel:=false;
@@ -2051,7 +2055,7 @@ end;
 procedure TFMain.PopCrtKeyClick(Sender: TObject);
 var
   ro:stRegOpInfo;
-  Key,RootKey,NewKey,Val,data:string;
+  Key,RootKey,NewKey,Val,data:ansistring;
   p:pansiChar;
   i:integer;
 begin
@@ -2430,7 +2434,7 @@ end;
 
 procedure TFMain.PopDelFileClick(Sender: TObject);
 var
-  remoteName:string;
+  remoteName:ansistring;
 begin
   if not CurConActive then exit;
   remoteName:=getListFile(treeDir.Selected,ListFiles.Selected);
@@ -2608,7 +2612,7 @@ procedure TFMain.popSearchProcClick(Sender: TObject);
 var
   node:ttreeNode;
   i:integer;
-  s,txt:string;
+  s,txt:ansistring;
 begin
   node:=treeProc.Selected;
   if node.HasChildren then
